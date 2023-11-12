@@ -133,6 +133,7 @@ body, table, tr, td, th, div, h1, h2, input {
     height: 20px;
     right: calc(50vw - 230px);
     transform: translateX(-50%);
+    left: unset;
 }
 .leaflet-control-layers, .leaflet-bar {
     border: none;
@@ -203,10 +204,10 @@ body, table, tr, td, th, div, h1, h2, input {
         right: 20px;
     }  
     .leaflet-control-velocity {
-        right: 50%;
-        bottom: 20px;
+        top: calc(-40vh + 30px);
+        right: calc(50vw - 115px);
         transform: translateX(-50%);
-
+        left: unset;
     }
     .leaflet-bottom {
         top: 0;
