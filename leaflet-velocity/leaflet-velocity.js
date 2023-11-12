@@ -466,8 +466,8 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
     }
   },
   _clearAndRestart: function _clearAndRestart() {
-    // if (this._context) this._context.clearRect(0, 0, 3000, 3000);
-    // if (this._windy) this._startWindy();
+    if (this._context) this._context.clearRect(0, 0, 3000, 3000);
+    if (this._windy) this._startWindy();
   },
   _clearWind: function _clearWind() {
     $('.velocity-overlay').eq(0).hide();

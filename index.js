@@ -2,7 +2,7 @@
 
 // Base layers
 var windy = L.tileLayer('https://tiles.windy.com/tiles/v10.0/darkmap/{z}/{x}/{y}.png', {
-    opacity: 0.9,
+    opacity: 1,
     zIndex: 1001
 });
 var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -10,7 +10,7 @@ var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     zIndex: 1001
 });
 var currentLayer = L.tileLayer('https://tiles.windy.com/tiles/v10.0/darkmap/{z}/{x}/{y}.png', {
-    opacity: 0.9,
+    opacity: 1,
     zIndex: 1001
 });
 
@@ -127,12 +127,10 @@ map.on('baselayerchange', function (e) {
 });
 
 map.on('overlayadd', function (e) {
-    console.log($(layerControl._overlaysList).find('input[type="checkbox"]').siblings('span'));
     $(layerControl._overlaysList).find('input[type="checkbox"]').siblings('span').addClass('active');
 });
 
 map.on('overlayremove', function (e) {
-    console.log($(layerControl._overlaysList).find('input[type="checkbox"]').siblings('span'));
     $(layerControl._overlaysList).find('input[type="checkbox"]').siblings('span').removeClass('active');
 });
 
@@ -191,39 +189,59 @@ $('#step-select').on('change', (e) => {
 });
 
 function addGradientInfo(data) {
-    function getGradientDiv() {
-        let div = $('.layer-gradient');
-        if (div.length) {
-            return $(div).eq(0);
-        }
-        div = document.createElement('div');
-        $(div).addClass('layer-gradient');
-        return $(div);
-    }
-
     const currentGradient = gradient[data];
     const gradient_div = getGradientDiv();
-    let linear_gradient;
-
-    if (window.innerWidth < 991) {
-        linear_gradient = currentGradient.filter((color, index) => index % 2 === 0)
-            .map(color => `rgb(${color[0]}, ${color[1]}, ${color[2]})`);
-    } else {
-        linear_gradient = currentGradient.map(color => `rgb(${color[0]}, ${color[1]}, ${color[2]})`);
-    }
-
-    gradient_div.css('background', `linear-gradient(to right,${linear_gradient.join(', ')})`);
-    gradient_div.html('');
-
-    units[data].forEach((unit, index) => {
-        if (window.innerWidth < 991 && index % 2 !== 0 && data !=="precipitation") {
-            return;
-        }
-        gradient_div.append(`<span>${unit.toString()}</span>`);
-    });
-
+    const linear_gradient = calculateLinearGradient(currentGradient, data);
+    setGradientStyles(gradient_div, linear_gradient);
+    renderGradientUnits(gradient_div, units[data], data);
     $('#rh_bottom').append(gradient_div);
 }
+
+function getGradientDiv() {
+    let div = $('.layer-gradient');
+    if (div.length) {
+        return div.eq(0);
+    }
+    div = $('<div>').addClass('layer-gradient');
+    return div;
+}
+
+function calculateLinearGradient(gradientData, dataType) {
+    if (window.innerWidth < 991) {
+        return gradientData
+            .filter((color, index) => shouldIncludeColor(index, dataType))
+            .map(color => `rgb(${color[0]}, ${color[1]}, ${color[2]})`);
+    } else {
+        return gradientData.map(color => `rgb(${color[0]}, ${color[1]}, ${color[2]})`);
+    }
+}
+
+function shouldIncludeColor(index, dataType) {
+    return (index % 2 === 0 && dataType !== 'precipitation' && dataType !== 'temperature') ||
+           (dataType === 'precipitation') ||
+           (dataType === 'temperature' && (index !== 0 && index !== 1 && index !== 2));
+}
+
+function setGradientStyles(gradientDiv, linearGradient) {
+    gradientDiv.css('background', `linear-gradient(to right, ${linearGradient.join(', ')})`);
+    gradientDiv.html('');
+}
+
+function renderGradientUnits(gradientDiv, unitArray, dataType) {
+    unitArray.forEach((unit, index) => {
+        if (window.innerWidth < 991 && shouldSkipUnit(index, dataType)) {
+            return;
+        }
+        gradientDiv.append(`<span>${unit.toString()}</span>`);
+    });
+}
+
+function shouldSkipUnit(index, dataType) {
+    return (dataType === 'temperature' && (index === 1 || index === 2 || index === 3)) ||
+            (index % 2 !== 0 && dataType !== 'precipitation' && dataType !== 'temperature');
+}
+
+
 
 map.on('zoom', () => {
     const currentZoom = map.getZoom();
