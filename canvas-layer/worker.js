@@ -137,7 +137,6 @@ class GradientTree {
 
         search(this.root, 0);
         this.cache.set(cacheKey, best)
-        console.log(best);
         return best;
     }
 
