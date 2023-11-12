@@ -1,5 +1,5 @@
 const MAX_ZOOM = 3;
-const worker = new Worker('../canvas-layer/worker.js');
+const worker = new Worker('./canvas-layer/worker.js');
 L.TileLayer.Canvas = L.TileLayer.extend({
     
     _delays: {},

@@ -84,7 +84,7 @@ function createLayers(step, defaultLayer, isAddWind) {
         }
     });
 
-    $.getJSON(`../tiles/${step}/oper-${step}wind.json`, function (data) {
+    $.getJSON(`./tiles/${step}/oper-${step}wind.json`, function (data) {
         velocityLayer = L.velocityLayer({
             displayValues: true,
             displayOptions: {
@@ -176,7 +176,7 @@ $('#step-select').on('change', (e) => {
         layer.setUrl(new_url)
     });
 
-        $.getJSON(`../tiles/${selectedStep}/oper-${selectedStep}wind.json`, function (data) {
+        $.getJSON(`./tiles/${selectedStep}/oper-${selectedStep}wind.json`, function (data) {
             velocityLayer.setData(data)
             if(windChecked) {
                 velocityLayer._startWindy()
