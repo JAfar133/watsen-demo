@@ -204,7 +204,7 @@ body, table, tr, td, th, div, h1, h2, input {
         right: 20px;
     }  
     .leaflet-control-velocity {
-        top: calc(-40vh + 30px);
+        top: calc(-40vh + 35px);
         right: calc(50vw - 115px);
         transform: translateX(-50%);
         left: unset;
