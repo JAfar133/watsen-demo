@@ -22,7 +22,8 @@ body, table, tr, td, th, div, h1, h2, input {
 .ctl {
     width: 50px;
     height: 50px;
-    
+    right: 20px;
+    top: 10px;
     background: url('./images/infoButton.png');
     background-size: contain;
     background-repeat: no-repeat;
@@ -37,20 +38,21 @@ body, table, tr, td, th, div, h1, h2, input {
 }
 
 .step-select-control {
-    right: 19px;
-    top: calc(100vh - 100px);
+    right: 20px;
+    top: calc(100vh - 55px);
     position: absolute;
     border-radius: 5px;
 }
 .step-select-control select {
-    padding: 5px;
+    padding: 3px;
     border-radius: 20px;
     color: #fff;
     /* width: 60px; */
-    background: rgba(0, 0, 0, 0.8);
+    max-width: 80px;
+    background: rgba(0, 0, 0, 0.5);
 }
 .step-select-control select option {
-    padding: 25px;
+    background: rgba(0, 0, 0, 0.7);
 }
 .leaflet-control-velocity {
     bottom: 20px;
@@ -125,6 +127,10 @@ body, table, tr, td, th, div, h1, h2, input {
 }
 .leaflet-control-velocity {
     position: absolute;
+    top: calc(-40vh + 20px);
+    height: 20px;
+    right: calc(50vw - 230px);
+    transform: translateX(-50%);
 }
 .leaflet-control-layers, .leaflet-bar {
     border: none;
@@ -196,6 +202,19 @@ body, table, tr, td, th, div, h1, h2, input {
     }
     
 }
+@media (max-width:1400px) {
+    .layer-gradient span{
+        width: 34px;
+        font-size: 12px;
+    }
+    .step-select-control {
+        right: 20px;
+        top: calc(100vh - 100px);
+        position: absolute;
+        border-radius: 5px;
+    }
+    
+}
 
 .leaflet-bar a:first-child {
     background-image: url("./images/plus.png");
@@ -251,6 +270,8 @@ body, table, tr, td, th, div, h1, h2, input {
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
     color: #fff;
     font-size: 20px;
+    right: 20px;
+    top: 10px;
 }   
 .leaflet-control-layers-expanded input {
     display: none;

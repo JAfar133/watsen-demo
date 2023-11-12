@@ -9,6 +9,7 @@
  */
 // -- L.DomUtil.setTransform from leaflet 1.0.0 to work on 0.0.7
 //------------------------------------------------------------------------------
+// const worker1 = new Worker('../leaflet-velocity/worker.js');
 if (!L.DomUtil.setTransform) {
   L.DomUtil.setTransform = function (el, offset, scale) {
     var pos = offset || new L.Point(0, 0);
@@ -80,9 +81,9 @@ L.CanvasLayer = (L.Layer ? L.Layer : L.Class).extend({
 
     this.needRedraw();
     var self = this;
-    setTimeout(function () {
-      self._onLayerDidMove();
-    }, 0);
+
+    self._onLayerDidMove();
+
   },
   //-------------------------------------------------------------
   onRemove: function onRemove(map) {
@@ -204,39 +205,73 @@ L.Control.Velocity = L.Control.extend({
   degreesToCardinalDirection: function degreesToCardinalDirection(deg) {
     var cardinalDirection = '';
 
+    // if (deg >= 0 && deg < 11.25 || deg >= 348.75) {
+    //   cardinalDirection = 'N';
+    // } else if (deg >= 11.25 && deg < 33.75) {
+    //   cardinalDirection = 'NNW';
+    // } else if (deg >= 33.75 && deg < 56.25) {
+    //   cardinalDirection = 'NW';
+    // } else if (deg >= 56.25 && deg < 78.75) {
+    //   cardinalDirection = 'WNW';
+    // } else if (deg >= 78.25 && deg < 101.25) {
+    //   cardinalDirection = 'W';
+    // } else if (deg >= 101.25 && deg < 123.75) {
+    //   cardinalDirection = 'WSW';
+    // } else if (deg >= 123.75 && deg < 146.25) {
+    //   cardinalDirection = 'SW';
+    // } else if (deg >= 146.25 && deg < 168.75) {
+    //   cardinalDirection = 'SSW';
+    // } else if (deg >= 168.75 && deg < 191.25) {
+    //   cardinalDirection = 'S';
+    // } else if (deg >= 191.25 && deg < 213.75) {
+    //   cardinalDirection = 'SSE';
+    // } else if (deg >= 213.75 && deg < 236.25) {
+    //   cardinalDirection = 'SE';
+    // } else if (deg >= 236.25 && deg < 258.75) {
+    //   cardinalDirection = 'ESE';
+    // } else if (deg >= 258.75 && deg < 281.25) {
+    //   cardinalDirection = 'E';
+    // } else if (deg >= 281.25 && deg < 303.75) {
+    //   cardinalDirection = 'ENE';
+    // } else if (deg >= 303.75 && deg < 326.25) {
+    //   cardinalDirection = 'NE';
+    // } else if (deg >= 326.25 && deg < 348.75) {
+    //   cardinalDirection = 'NNE';
+    // }
+
     if (deg >= 0 && deg < 11.25 || deg >= 348.75) {
-      cardinalDirection = 'N';
-    } else if (deg >= 11.25 && deg < 33.75) {
-      cardinalDirection = 'NNW';
-    } else if (deg >= 33.75 && deg < 56.25) {
-      cardinalDirection = 'NW';
-    } else if (deg >= 56.25 && deg < 78.75) {
-      cardinalDirection = 'WNW';
-    } else if (deg >= 78.25 && deg < 101.25) {
-      cardinalDirection = 'W';
-    } else if (deg >= 101.25 && deg < 123.75) {
-      cardinalDirection = 'WSW';
-    } else if (deg >= 123.75 && deg < 146.25) {
-      cardinalDirection = 'SW';
-    } else if (deg >= 146.25 && deg < 168.75) {
-      cardinalDirection = 'SSW';
-    } else if (deg >= 168.75 && deg < 191.25) {
-      cardinalDirection = 'S';
-    } else if (deg >= 191.25 && deg < 213.75) {
-      cardinalDirection = 'SSE';
-    } else if (deg >= 213.75 && deg < 236.25) {
-      cardinalDirection = 'SE';
-    } else if (deg >= 236.25 && deg < 258.75) {
-      cardinalDirection = 'ESE';
-    } else if (deg >= 258.75 && deg < 281.25) {
-      cardinalDirection = 'E';
-    } else if (deg >= 281.25 && deg < 303.75) {
-      cardinalDirection = 'ENE';
-    } else if (deg >= 303.75 && deg < 326.25) {
-      cardinalDirection = 'NE';
-    } else if (deg >= 326.25 && deg < 348.75) {
-      cardinalDirection = 'NNE';
-    }
+      cardinalDirection = 'С';
+  } else if (deg >= 11.25 && deg < 33.75) {
+      cardinalDirection = 'С/С/З';
+  } else if (deg >= 33.75 && deg < 56.25) {
+      cardinalDirection = 'С/З';
+  } else if (deg >= 56.25 && deg < 78.75) {
+      cardinalDirection = 'З/С/З';
+  } else if (deg >= 78.25 && deg < 101.25) {
+      cardinalDirection = 'З';
+  } else if (deg >= 101.25 && deg < 123.75) {
+      cardinalDirection = 'З/Ю/З';
+  } else if (deg >= 123.75 && deg < 146.25) {
+      cardinalDirection = 'Ю/З';
+  } else if (deg >= 146.25 && deg < 168.75) {
+      cardinalDirection = 'Ю/Ю/З';
+  } else if (deg >= 168.75 && deg < 191.25) {
+      cardinalDirection = 'Ю';
+  } else if (deg >= 191.25 && deg < 213.75) {
+      cardinalDirection = 'Ю/Ю/В';
+  } else if (deg >= 213.75 && deg < 236.25) {
+      cardinalDirection = 'Ю/В';
+  } else if (deg >= 236.25 && deg < 258.75) {
+      cardinalDirection = 'В/Ю/В';
+  } else if (deg >= 258.75 && deg < 281.25) {
+      cardinalDirection = 'В';
+  } else if (deg >= 281.25 && deg < 303.75) {
+      cardinalDirection = 'В/С/В';
+  } else if (deg >= 303.75 && deg < 326.25) {
+      cardinalDirection = 'С/В';
+  } else if (deg >= 326.25 && deg < 348.75) {
+      cardinalDirection = 'С/С/В';
+  }
 
     return cardinalDirection;
   },
@@ -391,7 +426,6 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 
     var size = this._map.getSize(); // bounds, width, height, extent
 
-
     this._windy.start([[0, 0], [size.x, size.y]], size.x, size.y, [[bounds._southWest.lng, bounds._southWest.lat], [bounds._northEast.lng, bounds._northEast.lat]]);
   },
   _initWindy: function _initWindy(self) {
@@ -401,12 +435,10 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
       map: this._map
     }, self.options);
     this._windy = new Windy(options); // prepare context global var, start drawing
-
     this._context = this._canvasLayer._canvas.getContext("2d");
 
     this._canvasLayer._canvas.classList.add("velocity-overlay");
-
-    this.onDrawLayer();
+    // this.onDrawLayer();
 
     // this._map.on("dragstart", self._windy.stop);
 
@@ -502,7 +534,6 @@ var Windy = function Windy(params) {
   var setData = function setData(data) {
     gridData = data;
   };
-
   var setOptions = function setOptions(options) {
     if (options.hasOwnProperty("minVelocity")) MIN_VELOCITY_INTENSITY = options.minVelocity;
     if (options.hasOwnProperty("maxVelocity")) MAX_VELOCITY_INTENSITY = options.maxVelocity;
@@ -805,13 +836,19 @@ var Windy = function Windy(params) {
     var velocityScale = VELOCITY_SCALE * Math.pow(mapArea, 0.4);
     var columns = [];
     var x = bounds.x;
+    // worker1.postMessage({x: 0,y: 490});
+    // console.log(params.map.getProjection());
 
+    //   worker1.onmessage = function (event) {
+    //       var result = event.data;
+    //       console.log('Результат из воркера:', result);
+    //   };
     function interpolateColumn(x) {
       var column = [];
-
+      
       for (var y = bounds.y; y <= bounds.yMax; y += 2) {
+        
         var coord = invert(x, y);
-
         if (coord) {
           var λ = coord[0],
               φ = coord[1];
@@ -968,7 +1005,6 @@ var Windy = function Windy(params) {
       height: height
     };
     stop(); // build grid
-
     buildGrid(gridData, function (grid) {
       // interpolateField
       interpolateField(grid, buildBounds(bounds, width, height), mapBounds, function (bounds, field) {
@@ -978,7 +1014,10 @@ var Windy = function Windy(params) {
       });
     });
   };
-
+  var updateParams = function updateParams(colorScale1, multiply) {
+    if(colorScale1) colorScale = colorScale1;
+    if(multiply) PARTICLE_MULTIPLIER = multiply;
+  }
   var stop = function stop() {
     if (windy.field) windy.field.release();
     if (animationLoop) cancelAnimationFrame(animationLoop);
@@ -991,7 +1030,8 @@ var Windy = function Windy(params) {
     createField: createField,
     interpolatePoint: interpolate,
     setData: setData,
-    setOptions: setOptions
+    setOptions: setOptions,
+    updateParams: updateParams
   };
   return windy;
 };
