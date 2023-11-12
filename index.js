@@ -140,9 +140,10 @@ map.on('layeradd', function (e) {
 
 map.fitBounds([[-85.05112877980659, 180.0], [85.0511287798066, -180.0]]);
 
-var stepControl = L.control();
-stepControl.onAdd = function (map) {
-    const div = L.DomUtil.create('div', 'step-select-control');
+
+function addStepSelect() {
+    const div = document.createElement('div');
+    div.classList.add('step-select-control');
     const select = document.createElement('select');
     select.id = 'step-select';
     const option = document.createElement('option');
@@ -162,9 +163,11 @@ stepControl.onAdd = function (map) {
 
     div.appendChild(select);
 
-    return div;
+    $('#rh_bottom').append(div);
 };
-stepControl.addTo(map);
+
+addStepSelect()
+
 
 $('#step-select').on('change', (e) => {
     const selectedStep = e.target.value;

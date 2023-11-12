@@ -39,8 +39,10 @@ body, table, tr, td, th, div, h1, h2, input {
 
 .step-select-control {
     right: 20px;
-    top: calc(100vh - 55px);
+    /* top: calc(100vh - 55px); */
+    bottom: 20px;
     position: absolute;
+    pointer-events: auto;
     border-radius: 5px;
 }
 .step-select-control select {
@@ -194,6 +196,21 @@ body, table, tr, td, th, div, h1, h2, input {
         left: calc(50% );
         transform: translateX(-50%);
     }
+    .leaflet-control-layers-expanded span{
+        font-size: 12px !important;
+    }  
+    .leaflet-control-layers-expanded{
+        right: 20px;
+    }  
+    .leaflet-control-velocity {
+        right: 50%;
+        transform: translateX(-50%);
+
+    }
+    .leaflet-bottom {
+        top: 0;
+        left: 0;
+    }
 }
 @media (max-width:1200px) {
     .layer-gradient span{
@@ -208,10 +225,7 @@ body, table, tr, td, th, div, h1, h2, input {
         font-size: 12px;
     }
     .step-select-control {
-        right: 20px;
-        top: calc(100vh - 100px);
-        position: absolute;
-        border-radius: 5px;
+        bottom: 60px;
     }
     
 }
@@ -227,8 +241,12 @@ body, table, tr, td, th, div, h1, h2, input {
     border: none;
     z-index: 2;
 }
-
+.leaflet-control {
+    margin-right: 0 !important;
+    margin-top: 0 !important;
+}
 .leaflet-left {
+    
     right: 20px;
     left: unset;
     top: 40%;
