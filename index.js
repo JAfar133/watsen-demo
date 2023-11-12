@@ -179,6 +179,7 @@ $('#step-select').on('change', (e) => {
         $.getJSON(`./tiles/${selectedStep}/oper-${selectedStep}wind.json`, function (data) {
             velocityLayer.setData(data)
             if(windChecked) {
+                velocityLayer._windy.stop()
                 velocityLayer._startWindy()
             }
         })
