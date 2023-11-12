@@ -127,10 +127,12 @@ map.on('baselayerchange', function (e) {
 });
 
 map.on('overlayadd', function (e) {
+    console.log($(layerControl._overlaysList).find('input[type="checkbox"]').siblings('span'));
     $(layerControl._overlaysList).find('input[type="checkbox"]').siblings('span').addClass('active');
 });
 
 map.on('overlayremove', function (e) {
+    console.log($(layerControl._overlaysList).find('input[type="checkbox"]').siblings('span'));
     $(layerControl._overlaysList).find('input[type="checkbox"]').siblings('span').removeClass('active');
 });
 
@@ -179,13 +181,13 @@ $('#step-select').on('change', (e) => {
         layer.setUrl(new_url)
     });
 
-        $.getJSON(`./tiles/${selectedStep}/oper-${selectedStep}wind.json`, function (data) {
-            velocityLayer.setData(data)
-            if(windChecked) {
-                velocityLayer._windy.stop()
-                velocityLayer._startWindy()
-            }
-        })
+    $.getJSON(`./tiles/${selectedStep}/oper-${selectedStep}wind.json`, function (data) {
+        velocityLayer.setData(data)
+        if(windChecked) {
+            velocityLayer._windy.stop()
+            velocityLayer._startWindy()
+        }
+    })
 });
 
 function addGradientInfo(data) {

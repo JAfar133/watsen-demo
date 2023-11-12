@@ -319,14 +319,18 @@ body, table, tr, td, th, div, h1, h2, input {
     margin-bottom: 5px;
 }
 .leaflet-control-layers-overlays span.active {
-    background: #A17651;
+    background: #a17651;
 }
-.leaflet-control-layers-overlays span:hover {
-    background: #A17651;
+@media (min-width:991px) {
+    .leaflet-control-layers-overlays span:hover {
+        background: #A17651;
+    }
+    .leaflet-control-layers-overlays span.active:hover {
+        background: #996f4b93;
+    }
 }
-.leaflet-control-layers-overlays span.active:hover {
-    background: #996f4b93;
-}
-   
+
+
+
    
    
