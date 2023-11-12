@@ -112,8 +112,8 @@ function createLayers(step, defaultLayer, isAddWind) {
     });
 }
 
-const startStep = '0h';
-const startLayer = 'Ветер';
+const startStep = '24h';
+const startLayer = 'Накопление осадков';
 createLayers(startStep, startLayer, true);
 map.on('load', ()=>{
     map.setView([44.8, 34],7)

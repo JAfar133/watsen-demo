@@ -23,13 +23,14 @@ self.onmessage = function (e) {
                 canvas.width,
                 canvas.height);
             const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            if(zoom >= 6){
+            if(zoom >= 3 && options.data === 'precipitation' || zoom >=6){
                 const data = imgData.data;
                 for (let i = 0; i < data.length; i += 4) {
                     const color = getGradientTree(options.gradientLevel || 7, options.data).findNearest([data[i], data[i + 1], data[i + 2]]);
                     data[i] = color[0];
                     data[i + 1] = color[1];
                     data[i + 2] = color[2];
+                    data[i + 3] = color[3] || 255;
                 }
             }
             
@@ -48,7 +49,7 @@ function interpolateColors(color1, color2, steps) {
         const r = Math.round(color1[0] + (color2[0] - color1[0]) * t);
         const g = Math.round(color1[1] + (color2[1] - color1[1]) * t);
         const b = Math.round(color1[2] + (color2[2] - color1[2]) * t);
-        interpolatedColors.push([r, g, b]);
+        interpolatedColors.push([r, g, b, color1[3]]);
     }
 
     return interpolatedColors;
@@ -136,6 +137,7 @@ class GradientTree {
 
         search(this.root, 0);
         this.cache.set(cacheKey, best)
+        console.log(best);
         return best;
     }
 
