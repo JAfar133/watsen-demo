@@ -50,7 +50,7 @@ body, table, tr, td, th, div, h1, h2, input {
     border-radius: 20px;
     color: #fff;
     /* width: 60px; */
-    max-width: 80px;
+    /* max-width: 85px; */
     background: rgba(0, 0, 0, 0.5);
 }
 .step-select-control select option {

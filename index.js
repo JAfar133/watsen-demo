@@ -139,12 +139,12 @@ map.on('layeradd', function (e) {
     $('.leaflet-control-layers-base input:checked').siblings('span').text(e.layer.options.name).addClass('active');
     
     if(e.layer._url === osm._url && map.hasLayer(velocityLayer)){
-        updateVelocityLayer(velocityLayer._windy.defaulColorScale, velocityLayer.options.particleMultiplier)
-        velocityLayer._startWindy()
+        // updateVelocityLayer(velocityLayer._windy.defaulColorScale, velocityLayer.options.particleMultiplier)
+        // velocityLayer._startWindy()
     }
     else if(e.layer._url !== osm._url && currentLayerName === undefined && map.hasLayer(velocityLayer)){
-        updateVelocityLayer(velocityLayer.options.colorScale, velocityLayer.options.particleMultiplier)
-        velocityLayer._startWindy()
+        // updateVelocityLayer(velocityLayer.options.colorScale, velocityLayer.options.particleMultiplier)
+        // velocityLayer._startWindy()
     }
     currentLayerName = e.layer.options.name
 });
@@ -157,20 +157,25 @@ function addStepSelect() {
     div.classList.add('step-select-control');
     const select = document.createElement('select');
     select.id = 'step-select';
-    const option = document.createElement('option');
-    option.innerHTML = `18.01.2023 00:00`;
-    option.disabled = true;
-    select.appendChild(option);
+    let day = 18;
     for (let i = 0; i <= 72; i += 6) {
         const option = document.createElement('option');
-        option.innerHTML = `+${i} ч`;
-        if(i===0) option.innerHTML = `Сейчас`;
+        const currentHour = i % 24;
+        const nextDay =  (i+6) % 24 === 0;
+        option.value = `${i}h`;
+        option.textContent = `(+${i.toString().padStart(2, '0')} ч) ${day}.01.2023 ${currentHour.toString().padStart(2, '0')}:00`;
+
         if (`${i}h` === startStep) {
             option.setAttribute('selected', 'selected');
         }
-        option.setAttribute('value', `${i}h`);
+
         select.appendChild(option);
+
+        if (nextDay) {
+            day+=1;
+        }
     }
+
 
     div.appendChild(select);
 
@@ -196,7 +201,7 @@ $('#step-select').on('change', (e) => {
             velocityLayer._windy.stop()
             velocityLayer._startWindy()
         }
-    })
+    });
 });
 
 function addGradientInfo(data) {
