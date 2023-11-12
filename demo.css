@@ -131,7 +131,7 @@ body, table, tr, td, th, div, h1, h2, input {
     position: absolute;
     top: calc(-40vh + 20px);
     height: 20px;
-    right: calc(50vw - 230px);
+    right: calc(50vw - 170px);
     left: unset;
 }
 .leaflet-control-layers, .leaflet-bar {

@@ -3,7 +3,8 @@
 // Base layers
 var windy = L.tileLayer('https://tiles.windy.com/tiles/v10.0/darkmap/{z}/{x}/{y}.png', {
     opacity: 1,
-    zIndex: 1001
+    zIndex: 1001,
+    name: "OSM"
 });
 var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     opacity: 1,
@@ -50,7 +51,8 @@ function createBaseLayers(step) {
         "Накопление осадков": createLayer(`../tiles/${step}/tp/{z}/{x}/{y}.png`, 'Накопление осадков', 'precipitation'),
         "Температура": createLayer(`../tiles/${step}/st/{z}/{x}/{y}.png`, 'Температура', 'temperature'),
         "Давление": createLayer(`../tiles/${step}/sp/{z}/{x}/{y}.png`, 'Давление', 'pressure', 20),
-        "Влажность 1000 гПа": createLayer(`../tiles/${step}/r/{z}/{x}/{y}.png`, 'Влажность 1000 гПа', 'humidity')
+        "Влажность 1000 гПа": createLayer(`../tiles/${step}/r/{z}/{x}/{y}.png`, 'Влажность 1000 гПа', 'humidity'),
+        "OSM": osm
     };
 }
 
@@ -97,7 +99,7 @@ function createLayers(step, defaultLayer, isAddWind) {
             opacity: 0.8,
             velocityScale: 0.0025,
             colorScale: ['#ffffff', '#F6F6F6', '#EDEDED'],
-            particleMultiplier: 0.6/320
+            particleMultiplier: 1/320
             
         });
         isAddWind && velocityLayer.addTo(map);
@@ -119,11 +121,9 @@ map.on('load', ()=>{
     map.setView([44.8, 34],7)
 })
 // Overlay layers (TMS)
-
+let currentLayerName;
 map.on('baselayerchange', function (e) {
     addGradientInfo(e.layer.options.data);
-    $('.leaflet-control-layers-base span').removeClass('active');
-    $(layerControl._overlaysList).find('input:checked').siblings('span').addClass('active');
 });
 
 map.on('overlayadd', function (e) {
@@ -135,7 +135,18 @@ map.on('overlayremove', function (e) {
 });
 
 map.on('layeradd', function (e) {
+    $('.leaflet-control-layers-base span').removeClass('active');
     $('.leaflet-control-layers-base input:checked').siblings('span').text(e.layer.options.name).addClass('active');
+    
+    if(e.layer._url === osm._url && map.hasLayer(velocityLayer)){
+        updateVelocityLayer(velocityLayer._windy.defaulColorScale, velocityLayer.options.particleMultiplier)
+        velocityLayer._startWindy()
+    }
+    else if(e.layer._url !== osm._url && currentLayerName === undefined && map.hasLayer(velocityLayer)){
+        updateVelocityLayer(velocityLayer.options.colorScale, velocityLayer.options.particleMultiplier)
+        velocityLayer._startWindy()
+    }
+    currentLayerName = e.layer.options.name
 });
 
 map.fitBounds([[-85.05112877980659, 180.0], [85.0511287798066, -180.0]]);
@@ -189,16 +200,23 @@ $('#step-select').on('change', (e) => {
 });
 
 function addGradientInfo(data) {
-    const currentGradient = gradient[data];
-    const gradient_div = getGradientDiv();
-    const linear_gradient = calculateLinearGradient(currentGradient, data);
-    setGradientStyles(gradient_div, linear_gradient);
-    renderGradientUnits(gradient_div, units[data], data);
-    $('#rh_bottom').append(gradient_div);
+    if(data){
+        const currentGradient = gradient[data];
+        const gradient_div = getGradientDiv();
+        const linear_gradient = calculateLinearGradient(currentGradient, data);
+        setGradientStyles(gradient_div, linear_gradient);
+        renderGradientUnits(gradient_div, units[data], data);
+        $('#rh_bottom').append(gradient_div);
+    }
+    else {
+        getGradientDiv().hide();
+    }
+    
 }
 
 function getGradientDiv() {
     let div = $('.layer-gradient');
+    div.show();
     if (div.length) {
         return div.eq(0);
     }
@@ -248,7 +266,7 @@ map.on('zoom', () => {
     let colorScale, particleMultiplier;
     if (currentZoom > 11) {
         currentLayer.setUrl(osm._url);
-        colorScale = ["#ED0CFF", "#ED0C80", "#ED0C00"];
+        colorScale = velocityLayer._windy.defaulColorScale;
         particleMultiplier = 0.1 / 320;
     } else {
         currentLayer.setUrl(windy._url);
@@ -270,7 +288,10 @@ map.on('zoom', () => {
 
 function updateVelocityLayer(colorScale, particleMultiplier) {
     if (map.hasLayer(velocityLayer)) {
-        velocityLayer._windy.updateParams(colorScale, particleMultiplier);
+        if(map.hasLayer(osm)){
+            velocityLayer._windy.updateParams(velocityLayer._windy.defaulColorScale, particleMultiplier);
+        }
+        else velocityLayer._windy.updateParams(colorScale, particleMultiplier);
     }
 }
 

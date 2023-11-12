@@ -1025,6 +1025,7 @@ var Windy = function Windy(params) {
 
   var windy = {
     params: params,
+    defaulColorScale: defaulColorScale,
     start: start,
     stop: stop,
     createField: createField,
