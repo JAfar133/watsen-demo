@@ -6,10 +6,14 @@ self.onmessage = function (e) {
     .then(response => response.blob())
     .then(blob => createImageBitmap(blob))
     .then(imgBitmap => {
-        const canvas = new OffscreenCanvas(width, height);
-        const ctx = canvas.getContext('2d');
-        const imageWidth = width / 2 ** (zoom - scaledCoords.z);
-            const imageHeight = height / 2 ** (zoom - scaledCoords.z);
+        const canvas = new OffscreenCanvas(width+0, height+0);
+        const ctx = canvas.getContext('2d', {
+            desynchronized: true,
+            willReadFrequently: true,
+            alpha: false
+        });
+        const imageWidth = (width+0) / 2 ** (zoom - scaledCoords.z);
+            const imageHeight = (height+0) / 2 ** (zoom - scaledCoords.z);
             const imageX = (coords.x - scaledCoords.x * 2 ** (zoom - scaledCoords.z)) * imageWidth
             const imageY = (coords.y - scaledCoords.y * 2 ** (zoom - scaledCoords.z)) * imageHeight
             ctx.drawImage(
@@ -23,7 +27,9 @@ self.onmessage = function (e) {
                 canvas.width,
                 canvas.height);
             const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            if(zoom >= 3 && options.data === 'precipitation' || zoom >=6){
+            console.log(canvas.width, imageWidth);
+            if(zoom > 3 && options.data === 'precipitation' || zoom >=6){
+                
                 const data = imgData.data;
                 for (let i = 0; i < data.length; i += 4) {
                     const color = getGradientTree(options.gradientLevel || 7, options.data).findNearest([data[i], data[i + 1], data[i + 2]]);

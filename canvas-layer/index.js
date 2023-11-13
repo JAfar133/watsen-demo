@@ -1,6 +1,6 @@
 const MAX_ZOOM = 3;
 const worker = new Worker('./canvas-layer/worker.js');
-const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+const isIOS = /iPhone|iPad|iPod|Firefox/i.test(navigator.userAgent);
 L.TileLayer.Canvas = L.TileLayer.extend({
     
     _delays: {},
