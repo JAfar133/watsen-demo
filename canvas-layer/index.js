@@ -10,8 +10,8 @@ L.TileLayer.Canvas = L.TileLayer.extend({
         const {doubleSize} = this.options;
 
         const {x: width, y: height} = this.getTileSize();
-        tile.width = Math.round(doubleSize ? width * 2 : width);
-        tile.height = Math.round(doubleSize ? height * 2 : height);
+        tile.width = doubleSize ? width * 2 : width;
+        tile.height = doubleSize ? height * 2 : height;
 
         const img = new Image();
         const tileZoom = this._getZoomForUrl();
@@ -121,31 +121,27 @@ L.TileLayer.Canvas = L.TileLayer.extend({
     drawTile(imgUrl, coords, scaledCoords, tile, done, zoom) {
         const img = new Image();
         img.src = imgUrl;
-
+        img.crossOrigin = 'anonymous';
         const tileCtx = tile.getContext('2d')
+        tileCtx.imageSmoothingEnabled = false;
         img.onload = () => {
             const imageWidth = tile.width / 2 ** (zoom - scaledCoords.z);
             const imageHeight = tile.height / 2 ** (zoom - scaledCoords.z);
             const imageX = (coords.x - scaledCoords.x * 2 ** (zoom - scaledCoords.z)) * imageWidth
             const imageY = (coords.y - scaledCoords.y * 2 ** (zoom - scaledCoords.z)) * imageHeight
-            
+
             // if (zoom < 6 && this.options.data !== 'precipitation'){
             if (zoom <= 11 && this.options.data !== 'precipitation'){
-                const ctx = this.getTempCtx();
-                const canvas = ctx.canvas;
-                canvas.width = Math.round(tile.width);
-                canvas.height =  Math.round(tile.height);
-                ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
                 tileCtx.drawImage(
-                    canvas,
+                    img,
                     imageX,
                     imageY,
                     imageWidth,
                     imageHeight,
                     0,
                     0,
-                    Math.round(tile.width),
-                    Math.round(tile.height));
+                    tile.width,
+                    tile.height);
             }
             else if(this.options.data === 'precipitation') {
             // else if(zoom >=6 || (zoom > 3 && this.options.data === 'precipitation')) {
