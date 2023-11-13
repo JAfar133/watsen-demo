@@ -1,5 +1,6 @@
 const MAX_ZOOM = 3;
 const worker = new Worker('./canvas-layer/worker.js');
+const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 L.TileLayer.Canvas = L.TileLayer.extend({
     
     _delays: {},
@@ -54,21 +55,26 @@ L.TileLayer.Canvas = L.TileLayer.extend({
                 x: scaledCoords.x,
                 y: this.getYForZoom(scaledCoords),
             }));
-            // const tileId = [coords.x, coords.y, tileZoom].join(', ')
-            // const tiles = this.getTiles();
-            // tiles.set(tileId, {myTile: {tile, dataUrl: ''}, doneF: done});
-            // worker.postMessage({ imageUrl, coords, scaledCoords, zoom: this._getZoomForUrl(), width: tile.width, height: tile.height, tileId, options: this.options });
-            // worker.onmessage = (event) => {
-            //     const { imgData, tileId } = event.data;
-            //     const {myTile, doneF} = tiles.get(tileId)
-            //     const tileCtx = myTile.tile.getContext('2d')
-            //     tileCtx.putImageData(imgData, 0, 0);
-            //     myTile.tile.complete = true;
-            //     doneF(null, myTile.tile);
-            //     tiles.delete(tileId)
-            //     return;
-            // };
-            this.drawTile(imageUrl, coords, scaledCoords, tile, done, this._getZoomForUrl());
+            if(isIOS) {
+                this.drawTile(imageUrl, coords, scaledCoords, tile, done, this._getZoomForUrl());
+            } else {
+                const tileId = [coords.x, coords.y, tileZoom].join(', ')
+                const tiles = this.getTiles();
+                tiles.set(tileId, {myTile: {tile, dataUrl: ''}, doneF: done});
+                worker.postMessage({ imageUrl, coords, scaledCoords, zoom: this._getZoomForUrl(), width: tile.width, height: tile.height, tileId, options: this.options });
+                worker.onmessage = (event) => {
+                    const { imgData, tileId } = event.data;
+                    const {myTile, doneF} = tiles.get(tileId)
+                    const tileCtx = myTile.tile.getContext('2d')
+                    tileCtx.putImageData(imgData, 0, 0);
+                    myTile.tile.complete = true;
+                    doneF(null, myTile.tile);
+                    tiles.delete(tileId)
+                    return;
+                };
+            }
+            
+            
         } else {
             return L.TileLayer.prototype.getTileUrl.call(this, coords);
         }
