@@ -27,7 +27,6 @@ self.onmessage = function (e) {
                 canvas.width,
                 canvas.height);
             const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            console.log(canvas.width, imageWidth);
             if(zoom > 3 && options.data === 'precipitation' || zoom >=6){
                 
                 const data = imgData.data;

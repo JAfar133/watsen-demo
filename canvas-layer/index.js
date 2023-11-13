@@ -55,24 +55,25 @@ L.TileLayer.Canvas = L.TileLayer.extend({
                 x: scaledCoords.x,
                 y: this.getYForZoom(scaledCoords),
             }));
-            if(isIOS) {
+            // TODO
+            // if(isIOS) {
                 this.drawTile(imageUrl, coords, scaledCoords, tile, done, this._getZoomForUrl());
-            } else {
-                const tileId = [coords.x, coords.y, tileZoom].join(', ')
-                const tiles = this.getTiles();
-                tiles.set(tileId, {myTile: {tile, dataUrl: ''}, doneF: done});
-                worker.postMessage({ imageUrl, coords, scaledCoords, zoom: this._getZoomForUrl(), width: tile.width, height: tile.height, tileId, options: this.options });
-                worker.onmessage = (event) => {
-                    const { imgData, tileId } = event.data;
-                    const {myTile, doneF} = tiles.get(tileId)
-                    const tileCtx = myTile.tile.getContext('2d')
-                    tileCtx.putImageData(imgData, 0, 0);
-                    myTile.tile.complete = true;
-                    doneF(null, myTile.tile);
-                    tiles.delete(tileId)
-                    return;
-                };
-            }
+            // } else {
+            //     const tileId = [coords.x, coords.y, tileZoom].join(', ')
+            //     const tiles = this.getTiles();
+            //     tiles.set(tileId, {myTile: {tile, dataUrl: ''}, doneF: done});
+            //     worker.postMessage({ imageUrl, coords, scaledCoords, zoom: this._getZoomForUrl(), width: tile.width, height: tile.height, tileId, options: this.options });
+            //     worker.onmessage = (event) => {
+            //         const { imgData, tileId } = event.data;
+            //         const {myTile, doneF} = tiles.get(tileId)
+            //         const tileCtx = myTile.tile.getContext('2d')
+            //         tileCtx.putImageData(imgData, 0, 0);
+            //         myTile.tile.complete = true;
+            //         doneF(null, myTile.tile);
+            //         tiles.delete(tileId)
+            //         return;
+            //     };
+            // }
             
             
         } else {
@@ -128,7 +129,8 @@ L.TileLayer.Canvas = L.TileLayer.extend({
             const imageHeight = tile.height / 2 ** (zoom - scaledCoords.z);
             const imageX = (coords.x - scaledCoords.x * 2 ** (zoom - scaledCoords.z)) * imageWidth
             const imageY = (coords.y - scaledCoords.y * 2 ** (zoom - scaledCoords.z)) * imageHeight
-            if (zoom < 6 && this.options.data !== 'precipitation'){
+            // if (zoom < 6 && this.options.data !== 'precipitation'){
+            if (zoom <= 11 && this.options.data !== 'precipitation'){
                 tileCtx.drawImage(
                     img,
                     imageX,
@@ -140,7 +142,8 @@ L.TileLayer.Canvas = L.TileLayer.extend({
                     tile.width,
                     tile.height);
             }
-            else if(zoom >=6 || (zoom > 3 && this.options.data === 'precipitation')) {
+            else if(this.options.data === 'precipitation') {
+            // else if(zoom >=6 || (zoom > 3 && this.options.data === 'precipitation')) {
                 const ctx = this.getTempCtx();
                 const canvas = ctx.canvas;
                 canvas.width = tile.width;
@@ -159,11 +162,15 @@ L.TileLayer.Canvas = L.TileLayer.extend({
                 const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                 const data = imgData.data
                 for (let i = 0; i < data.length; i += 4) {
-                    const color = this.getGradientTree(this.options.gradientLevel || 7).findNearest([data[i], data[i + 1], data[i + 2]]);
-                    data[i] = color[0];
-                    data[i + 1] = color[1];
-                    data[i + 2] = color[2];
-                    data[i + 3] = color[3] || 255;
+                    // const color = this.getGradientTree(this.options.gradientLevel || 7).findNearest([data[i], data[i + 1], data[i + 2]]);
+                    // data[i] = color[0];
+                    // data[i + 1] = color[1];
+                    // data[i + 2] = color[2];
+                    // data[i + 3] = color[3] || 255;
+
+                    if(this.distance([89,89,89], [data[i], data[i + 1], data[i + 2]]) <= 30){
+                        data[i + 3] = 230;
+                    }
                 }
                 tileCtx.putImageData(imgData, 0, 0)
             }
@@ -217,6 +224,13 @@ L.TileLayer.Canvas = L.TileLayer.extend({
         }
         return this.ctx
     },
+    distance: function (a, b) {
+        return Math.sqrt(
+            (a[0] - b[0]) ** 2 +
+            (a[1] - b[1]) ** 2 +
+            (a[2] - b[2]) ** 2
+        );
+    }
 });
 
 L.tileLayer.canvas = function tileLayerCanvas(url, options) {
