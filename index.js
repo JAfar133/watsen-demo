@@ -150,59 +150,121 @@ map.on('layeradd', function (e) {
 });
 
 map.fitBounds([[-85.05112877980659, 180.0], [85.0511287798066, -180.0]]);
+let currentStep = Number(startStep.slice(0, 2) || startStep.slice(0, 1));
+$('#step-control').on('click', function (e) {
+    startDay = 18
+    startHour = 0
+    const activeDate = $('#step-control .step-control_date.active').html()
+    const activeHour = $('#step-control .step-control_hour.active').html().slice(0, 2)
+    const targetHtml = $(e.target).html();
 
-
-function addStepSelect() {
-    const div = document.createElement('div');
-    div.classList.add('step-select-control');
-    const select = document.createElement('select');
-    select.id = 'step-select';
-    let day = 18;
-    for (let i = 0; i <= 72; i += 6) {
-        const option = document.createElement('option');
-        const currentHour = i % 24;
-        const nextDay =  (i+6) % 24 === 0;
-        option.value = `${i}h`;
-        option.textContent = `(+${i.toString().padStart(2, '0')} ч) ${day}.01.2023 ${currentHour.toString().padStart(2, '0')}:00`;
-
-        if (`${i}h` === startStep) {
-            option.setAttribute('selected', 'selected');
+    if ($(e.target).hasClass('step-control_date')) {
+        const target_day = targetHtml.slice(0, 2)
+        let selectedStep, step;
+        if (target_day === '21') {
+            selectedStep = '72h'
+            step = 72
+            $('#step-control .step-control_hour.active').removeClass('active');
+            $('#step-control .step-control_hour:contains("00:00")').addClass('active');
+            $('#step-control .step-control_hour:not(:contains("00:00"))').addClass('disabled');
+            $('#step-control .add_hour:contains("+")').addClass('disabled');
         }
-
-        select.appendChild(option);
-
-        if (nextDay) {
-            day+=1;
+        else {
+            $('#step-control .step-control_hour').removeClass('disabled');
+            step = (Number(target_day) - Number(startDay)) * 24 + Number(activeHour)
+            selectedStep = `${step}h`
+        }
+        if(step === 0){
+            $('#step-control .add_hour:contains("-")').addClass('disabled');
+        }
+        if(step !== 72){
+            $('#step-control .add_hour:contains("+")').removeClass('disabled');
+        }
+        if(step !== 0){
+            $('#step-control .add_hour:contains("-")').removeClass('disabled');
+        }
+        updateLayers(selectedStep)
+        currentStep = step;
+        $('#step-control .step-control_date.active').removeClass('active');
+        $(e.target).addClass('active')
+    } else if ($(e.target).hasClass('step-control_hour')) {
+        const active_day = activeDate.slice(0, 2)
+        const step = (Number(active_day) - Number(startDay)) * 24 + Number(targetHtml.slice(0, 2))
+        const selectedStep = `${step}h`
+        updateLayers(selectedStep);
+        if(step === 0){
+            $('#step-control .add_hour:contains("-")').addClass('disabled');
+        }
+        if(step !== 72){
+            $('#step-control .add_hour:contains("+")').removeClass('disabled');
+        }
+        if(step !== 0){
+            $('#step-control .add_hour:contains("-")').removeClass('disabled');
+        }
+        $('#step-control .step-control_hour.active').removeClass('active');
+        $(e.target).addClass('active')
+        currentStep = step;
+    } else if ($(e.target).hasClass('add_hour')) {
+        if (targetHtml.includes('+')) {
+            const step = currentStep + 6
+            const day = Math.floor(step / 24) + startDay;
+            $('#step-control .add_hour:contains("-")').removeClass('disabled');
+            if (step === 72) {
+                $(e.target).addClass('disabled')
+                $('#step-control .step-control_hour:not(:contains("00:00"))').addClass('disabled');
+            }
+            if (activeHour === '18') {
+                $('#step-control .step-control_hour.active').removeClass('active');
+                $('#step-control .step-control_hour:contains("00:00")').addClass('active');
+                $('#step-control .step-control_date.active').removeClass('active');
+                $(`#step-control .step-control_date:contains("${day} Янв.")`).addClass('active');
+            } else {
+                $('#step-control .step-control_hour.active').removeClass('active');
+                $(`#step-control .step-control_hour:contains("${Number(activeHour) + 6}:00")`).addClass('active');
+            }
+            const selectedStep = `${step}h`
+            currentStep = step
+            updateLayers(selectedStep)
+        } else if (targetHtml.includes('-')) {
+            const step = currentStep - 6
+            const day = Math.floor(step / 24) + startDay;
+            $('#step-control .step-control_hour').removeClass('disabled');
+            $('#step-control .add_hour:contains("+")').removeClass('disabled');
+            if (step === 0) {
+                $(e.target).addClass('disabled')
+            }
+            if (activeHour === '00') {
+                $('#step-control .step-control_hour.active').removeClass('active');
+                $('#step-control .step-control_hour:contains("18:00")').addClass('active');
+                $('#step-control .step-control_date.active').removeClass('active');
+                $(`#step-control .step-control_date:contains("${day} Янв.")`).addClass('active');
+            } else {
+                $('#step-control .step-control_hour.active').removeClass('active');
+                $(`#step-control .step-control_hour:contains("${Number(activeHour) - 6}:00")`).addClass('active');
+            }
+            const selectedStep = `${step}h`
+            currentStep = step
+            updateLayers(selectedStep)
         }
     }
+});
 
-
-    div.appendChild(select);
-
-    $('#rh_bottom').append(div);
-};
-
-addStepSelect()
-
-
-$('#step-select').on('change', (e) => {
-    const selectedStep = e.target.value;
-    const currentLayer = $('.leaflet-control-layers-base input:checked').siblings('span').html();
-    const windChecked = $('.leaflet-control-layers-overlays input:checkbox').prop('checked');
-
+function updateLayers(selectedStep) {
     Object.entries(baseLayers).forEach(([name, layer]) => {
-        const new_url = layer._url.replace(/\d+h/g, selectedStep);
-        layer.setUrl(new_url)
+        const newUrl = layer._url.replace(/\d+h/g, selectedStep);
+        layer.setUrl(newUrl);
     });
-
     $.getJSON(`./tiles/${selectedStep}/oper-${selectedStep}wind.json`, function (data) {
         velocityLayer.setData(data)
+        const windChecked = $('.leaflet-control-layers-overlays input:checkbox').prop('checked');
         if(windChecked) {
             velocityLayer._windy.stop()
             velocityLayer._startWindy()
         }
     });
-});
+}
+
+
 
 function addGradientInfo(data) {
     if(data){

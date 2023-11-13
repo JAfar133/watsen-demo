@@ -102,14 +102,81 @@ body, table, tr, td, th, div, h1, h2, input {
 .rh_bottom {
     position: absolute;
     bottom: 0;
-    width: 100vw;
+    width: calc(100vw - 230px);
+    left: 230px;
     height: 200px;
     pointer-events: none;
+}
+.rh_bottom .step-control {
+    width: 100%;
+    margin: 80px auto;
+    display: flex;
+    justify-content: center;
+}
+.rh_bottom .step-control .container {
+    display: flex;
+    flex-direction: column;
+    row-gap: 5px;
+}
+.rh_bottom .day {
+    display: flex;
+    column-gap: 10px;
+    pointer-events: auto;
+}
+.rh_bottom .hour {
+    display: flex;
+    column-gap: 5px;
+    background: rgba(0, 0, 0, 0.5);
+    justify-content: space-between;
+    pointer-events: auto;
+}
+.rh_bottom .day div {
+    background: rgba(0, 0, 0, 0.5);
+    color: #fff;
+    padding: 3px 10px;
+}
+.rh_bottom .hour div {
+    color: #fff;
+    width: 100%;
+    padding: 3px 0;
+    text-align: center;
+}
+.rh_bottom .add_hour {
+    color: #fff;
+    display: grid; 
+    place-items: center;
+    background: rgba(0, 0, 0, 0.5);
+    width: 40px;
+    margin: 0 5px;
+    pointer-events: auto;
+}
+.rh_bottom .step {
+    cursor: pointer;
+}
+.rh_bottom .step.disabled {
+    cursor: auto;
+    pointer-events: none;
+    color: #8b8888;
+    /* background: rgba(0, 0, 0, 0.2); */
+}
+.rh_bottom .step.active {
+    background: #4CAEFD;
+}
+.rh_bottom .step:hover {  
+    background: #4CAEFD;
+}
+.rh_bottom .add_hour.minus {
+    height: 100%;
+    border-radius: 15px 0 0 15px;
+}
+.rh_bottom .add_hour.plus {
+    height: 100%;
+    border-radius: 0 15px 15px 0;
 }
 .layer-gradient {
     position: absolute;
     bottom: 20px;
-    left: calc(50% + 115px);
+    left: 50%;
     transform: translateX(-50%);
     border-radius: 20px;
     padding: 3px;
@@ -173,7 +240,11 @@ body, table, tr, td, th, div, h1, h2, input {
     -webkit-tap-highlight-color:transparent;
  }
 
-
+ @media (max-width:391px) {
+    .rh_bottom .step-control div {
+        font-size: 12px;
+    }
+}
 @media (max-width:768px) {
     .leaflet-bar a {
         width: 30px;
@@ -185,16 +256,16 @@ body, table, tr, td, th, div, h1, h2, input {
      }
 }
 @media (max-width:991px) {
+    .rh_bottom{
+        width: 100vw;
+        left: 0;
+    }
     .menu {
         display: none;
     }
     .layer-gradient span{
         width: 23px;
         font-size: 10px;
-    }
-    .layer-gradient {
-        left: calc(50% );
-        transform: translateX(-50%);
     }
     .leaflet-control-layers-expanded span{
         font-size: 12px !important;
@@ -210,6 +281,9 @@ body, table, tr, td, th, div, h1, h2, input {
     .leaflet-bottom {
         top: 0;
         left: 0;
+    }
+    .rh_bottom .step-control {
+        width: 100%;
     }
 }
 @media (max-width:1200px) {

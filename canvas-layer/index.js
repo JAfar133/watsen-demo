@@ -131,26 +131,11 @@ L.TileLayer.Canvas = L.TileLayer.extend({
             const imageHeight = tile.height / 2 ** (zoom - scaledCoords.z);
             const imageX = (coords.x - scaledCoords.x * 2 ** (zoom - scaledCoords.z)) * imageWidth
             const imageY = (coords.y - scaledCoords.y * 2 ** (zoom - scaledCoords.z)) * imageHeight
-            const tempCtx = this.getTempCtx()
-            tempCtx.canvas.width = tempCtx.canvas.height = tile.width
+
             // if (zoom < 6 && this.options.data !== 'precipitation'){
             if (zoom <= 11 && this.options.data !== 'precipitation'){
-                tempCtx.drawImage(
-                    img,
-                    0,
-                    0);
-                const imgData = tempCtx.getImageData(0, 0, tile.width, tile.height);
-                const data = imgData.data
-                const res = new Uint8ClampedArray(4);
-                for(var y = 0; y < imgData.height; y++){
-                    for(var x = 0; x < imgData.width; x++){
-                        this.getPixelValue(imgData,x, y, res);
-                        imgData.data.set(res,(x + y * imgData.width) * 4);
-                    }
-                }
-                tempCtx.putImageData(imgData, 0, 0)
                 tileCtx.drawImage(
-                    tempCtx.canvas,
+                    img,
                     imageX,
                     imageY,
                     imageWidth,
@@ -194,41 +179,6 @@ L.TileLayer.Canvas = L.TileLayer.extend({
             tile.complete = true;
             done(null, tile);
         };
-    },
-    getPixelValue: function (imgDat, x,y, result = []){ 
-        var i;
-        // clamp and floor coordinate
-        const ix1 = (x < 0 ? 0 : x >= imgDat.width ? imgDat.width - 1 : x)| 0;
-        const iy1 = (y < 0 ? 0 : y >= imgDat.height ? imgDat.height - 1 : y) | 0;
-        // get next pixel pos
-        const ix2 = ix1 === imgDat.width -1 ? ix1 : ix1 + 1;
-        const iy2 = iy1 === imgDat.height -1 ? iy1 : iy1 + 1;
-        // get interpolation position 
-        const xpos = x % 1;
-        const ypos = y % 1;
-        // get pixel index
-        var i1 = (ix1 + iy1 * imgDat.width) * 4;
-        var i2 = (ix2 + iy1 * imgDat.width) * 4;
-        var i3 = (ix1 + iy2 * imgDat.width) * 4;
-        var i4 = (ix2 + iy2 * imgDat.width) * 4;
-    
-        // to keep code short and readable get data alias
-        const d = imgDat.data;
-    
-        for(i = 0; i < 3; i ++){
-            // interpolate x for top and bottom pixels
-            const c1 = (d[i2] * d[i2++] - d[i1] * d[i1]) * xpos + d[i1] * d[i1 ++];
-            const c2 = (d[i4] * d[i4++] - d[i3] * d[i3]) * xpos + d[i3] * d[i3 ++];
-    
-            // now interpolate y
-            result[i] = Math.sqrt((c2 - c1) * ypos + c1);
-        }
-    
-        // and alpha is not logarithmic
-        const c1 = (d[i2] - d[i1]) * xpos + d[i1];
-        const c2 = (d[i4] - d[i3]) * xpos + d[i3];
-        result[3] = (c2 - c1) * ypos + c1;
-        return result;
     },
     createTile: function (coords, done) {
         const {timeout} = this.options;
