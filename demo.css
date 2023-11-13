@@ -117,6 +117,7 @@ body, table, tr, td, th, div, h1, h2, input {
     display: flex;
     flex-direction: column;
     row-gap: 5px;
+    width: 600px;
 }
 .rh_bottom .day {
     display: flex;
@@ -134,6 +135,7 @@ body, table, tr, td, th, div, h1, h2, input {
     background: rgba(0, 0, 0, 0.5);
     color: #fff;
     padding: 3px 10px;
+    width: 25%;
 }
 .rh_bottom .hour div {
     color: #fff;
