@@ -54,21 +54,21 @@ L.TileLayer.Canvas = L.TileLayer.extend({
                 x: scaledCoords.x,
                 y: this.getYForZoom(scaledCoords),
             }));
-            const tileId = [coords.x, coords.y, tileZoom].join(', ')
-            const tiles = this.getTiles();
-            tiles.set(tileId, {myTile: {tile, dataUrl: ''}, doneF: done});
-            worker.postMessage({ imageUrl, coords, scaledCoords, zoom: this._getZoomForUrl(), width: tile.width, height: tile.height, tileId, options: this.options });
-            worker.onmessage = (event) => {
-                const { imgData, tileId } = event.data;
-                const {myTile, doneF} = tiles.get(tileId)
-                const tileCtx = myTile.tile.getContext('2d')
-                tileCtx.putImageData(imgData, 0, 0);
-                myTile.tile.complete = true;
-                doneF(null, myTile.tile);
-                tiles.delete(tileId)
-                return;
-            };
-            // this.drawTile(imageUrl, coords, scaledCoords, tile, done, this._getZoomForUrl());
+            // const tileId = [coords.x, coords.y, tileZoom].join(', ')
+            // const tiles = this.getTiles();
+            // tiles.set(tileId, {myTile: {tile, dataUrl: ''}, doneF: done});
+            // worker.postMessage({ imageUrl, coords, scaledCoords, zoom: this._getZoomForUrl(), width: tile.width, height: tile.height, tileId, options: this.options });
+            // worker.onmessage = (event) => {
+            //     const { imgData, tileId } = event.data;
+            //     const {myTile, doneF} = tiles.get(tileId)
+            //     const tileCtx = myTile.tile.getContext('2d')
+            //     tileCtx.putImageData(imgData, 0, 0);
+            //     myTile.tile.complete = true;
+            //     doneF(null, myTile.tile);
+            //     tiles.delete(tileId)
+            //     return;
+            // };
+            this.drawTile(imageUrl, coords, scaledCoords, tile, done, this._getZoomForUrl());
         } else {
             return L.TileLayer.prototype.getTileUrl.call(this, coords);
         }
@@ -86,7 +86,7 @@ L.TileLayer.Canvas = L.TileLayer.extend({
             const r = Math.round(color1[0] + (color2[0] - color1[0]) * t);
             const g = Math.round(color1[1] + (color2[1] - color1[1]) * t);
             const b = Math.round(color1[2] + (color2[2] - color1[2]) * t);
-            interpolatedColors.push([r, g, b]);
+            interpolatedColors.push([r, g, b, color1[3]]);
         }
 
         return interpolatedColors;
@@ -117,13 +117,12 @@ L.TileLayer.Canvas = L.TileLayer.extend({
 
         const tileCtx = tile.getContext('2d')
         img.onload = () => {
-            
 
             const imageWidth = tile.width / 2 ** (zoom - scaledCoords.z);
             const imageHeight = tile.height / 2 ** (zoom - scaledCoords.z);
             const imageX = (coords.x - scaledCoords.x * 2 ** (zoom - scaledCoords.z)) * imageWidth
             const imageY = (coords.y - scaledCoords.y * 2 ** (zoom - scaledCoords.z)) * imageHeight
-            if (zoom < 6){
+            if (zoom < 6 && this.options.data !== 'precipitation'){
                 tileCtx.drawImage(
                     img,
                     imageX,
@@ -135,7 +134,7 @@ L.TileLayer.Canvas = L.TileLayer.extend({
                     tile.width,
                     tile.height);
             }
-            else {
+            else if(zoom >=6 || (zoom > 3 && this.options.data === 'precipitation')) {
                 const ctx = this.getTempCtx();
                 const canvas = ctx.canvas;
                 canvas.width = tile.width;
@@ -158,6 +157,7 @@ L.TileLayer.Canvas = L.TileLayer.extend({
                     data[i] = color[0];
                     data[i + 1] = color[1];
                     data[i + 2] = color[2];
+                    data[i + 3] = color[3] || 255;
                 }
                 tileCtx.putImageData(imgData, 0, 0)
             }
