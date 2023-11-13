@@ -127,16 +127,16 @@ L.TileLayer.Canvas = L.TileLayer.extend({
 
             const imageWidth = tile.width / 2 ** (zoom - scaledCoords.z);
             const imageHeight = tile.height / 2 ** (zoom - scaledCoords.z);
-            const imageX = (coords.x - scaledCoords.x * 2 ** (zoom - scaledCoords.z)) * imageWidth
-            const imageY = (coords.y - scaledCoords.y * 2 ** (zoom - scaledCoords.z)) * imageHeight
+            const imageX = Math.round((coords.x - scaledCoords.x * 2 ** (zoom - scaledCoords.z)) * imageWidth);
+            const imageY = Math.round((coords.y - scaledCoords.y * 2 ** (zoom - scaledCoords.z)) * imageHeight);
             // if (zoom < 6 && this.options.data !== 'precipitation'){
             if (zoom <= 11 && this.options.data !== 'precipitation'){
                 tileCtx.drawImage(
                     img,
                     imageX,
                     imageY,
-                    imageWidth,
-                    imageHeight,
+                    Math.round(imageWidth),
+                    Math.round(imageHeight),
                     0,
                     0,
                     tile.width,
