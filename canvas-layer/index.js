@@ -123,7 +123,9 @@ L.TileLayer.Canvas = L.TileLayer.extend({
         img.src = imgUrl;
         img.crossOrigin = 'anonymous';
         const tileCtx = tile.getContext('2d')
-        tileCtx.imageSmoothingEnabled = false;
+        tileCtx.imageSmoothingEnabled = true;
+        tileCtx.imageSmoothingQuality = "high"; // для использования более качественной интерполяции
+
         img.onload = () => {
             const imageWidth = tile.width / 2 ** (zoom - scaledCoords.z);
             const imageHeight = tile.height / 2 ** (zoom - scaledCoords.z);
