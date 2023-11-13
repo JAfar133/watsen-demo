@@ -137,14 +137,8 @@ L.TileLayer.Canvas = L.TileLayer.extend({
             if (zoom <= 11 && this.options.data !== 'precipitation'){
                 tempCtx.drawImage(
                     img,
-                    imageX,
-                    imageY,
-                    imageWidth,
-                    imageHeight,
                     0,
-                    0,
-                    tile.width,
-                    tile.height);
+                    0);
                 const imgData = tempCtx.getImageData(0, 0, tile.width, tile.height);
                 const data = imgData.data
                 const res = new Uint8ClampedArray(4);
@@ -154,7 +148,17 @@ L.TileLayer.Canvas = L.TileLayer.extend({
                         imgData.data.set(res,(x + y * imgData.width) * 4);
                     }
                 }
-                tileCtx.putImageData(imgData, 0, 0)
+                tempCtx.putImageData(imgData, 0, 0)
+                tileCtx.drawImage(
+                    tempCtx.canvas,
+                    imageX,
+                    imageY,
+                    imageWidth,
+                    imageHeight,
+                    0,
+                    0,
+                    tile.width,
+                    tile.height);
             }
             else if(this.options.data === 'precipitation') {
             // else if(zoom >=6 || (zoom > 3 && this.options.data === 'precipitation')) {
