@@ -131,10 +131,11 @@ L.TileLayer.Canvas = L.TileLayer.extend({
             const imageHeight = tile.height / 2 ** (zoom - scaledCoords.z);
             const imageX = (coords.x - scaledCoords.x * 2 ** (zoom - scaledCoords.z)) * imageWidth
             const imageY = (coords.y - scaledCoords.y * 2 ** (zoom - scaledCoords.z)) * imageHeight
-
+            const tempCtx = this.getTempCtx()
+            tempCtx.canvas.width = tempCtx.canvas.height = tile.width
             // if (zoom < 6 && this.options.data !== 'precipitation'){
             if (zoom <= 11 && this.options.data !== 'precipitation'){
-                tileCtx.drawImage(
+                tempCtx.drawImage(
                     img,
                     imageX,
                     imageY,
@@ -144,7 +145,7 @@ L.TileLayer.Canvas = L.TileLayer.extend({
                     0,
                     tile.width,
                     tile.height);
-                const imgData = tileCtx.getImageData(0, 0, tile.width, tile.height);
+                const imgData = tempCtx.getImageData(0, 0, tile.width, tile.height);
                 const data = imgData.data
                 const res = new Uint8ClampedArray(4);
                 for(var y = 0; y < imgData.height; y++){
