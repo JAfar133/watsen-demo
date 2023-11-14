@@ -1,6 +1,7 @@
 body {
     margin: 0;
     padding: 0;
+    -webkit-font-smoothing: antialiased;
 }
 
 body, table, tr, td, th, div, h1, h2, input {
