@@ -131,51 +131,29 @@ L.TileLayer.Canvas = L.TileLayer.extend({
             const imageHeight = tile.height / 2 ** (zoom - scaledCoords.z);
             const imageX = (coords.x - scaledCoords.x * 2 ** (zoom - scaledCoords.z)) * imageWidth
             const imageY = (coords.y - scaledCoords.y * 2 ** (zoom - scaledCoords.z)) * imageHeight
-
-            // if (zoom < 6 && this.options.data !== 'precipitation'){
-            if (zoom <= 11 && this.options.data !== 'precipitation'){
-                tileCtx.drawImage(
-                    img,
-                    imageX,
-                    imageY,
-                    imageWidth,
-                    imageHeight,
-                    0,
-                    0,
-                    tile.width,
-                    tile.height);
-            }
-            else if(this.options.data === 'precipitation') {
-            // else if(zoom >=6 || (zoom > 3 && this.options.data === 'precipitation')) {
+            const upScale = tile.width/imageHeight
                 const ctx = this.getTempCtx();
                 const canvas = ctx.canvas;
+                ctx.imageSmoothingEnabled = true;
                 canvas.width = tile.width;
                 canvas.height = tile.height;
                 ctx.drawImage(
                     img,
-                    imageX,
-                    imageY,
-                    imageWidth,
-                    imageHeight,
                     0,
-                    0,
-                    tile.width,
-                    tile.height);
-                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const data = imgData.data
-                for (let i = 0; i < data.length; i += 4) {
-                    // const color = this.getGradientTree(this.options.gradientLevel || 7).findNearest([data[i], data[i + 1], data[i + 2]]);
-                    // data[i] = color[0];
-                    // data[i + 1] = color[1];
-                    // data[i + 2] = color[2];
-                    // data[i + 3] = color[3] || 255;
-
-                    if(this.distance([89,89,89], [data[i], data[i + 1], data[i + 2]]) <= 30){
-                        data[i + 3] = 230;
+                    0,);
+                const imgData = ctx.getImageData(imageX, imageY, imageWidth, imageHeight);
+                const tileImageData = ctx.createImageData(tile.width, tile.height)
+                
+                console.log(upScale);
+                const res = new Uint8ClampedArray(4);
+                for(var y = 0; y < tileImageData.height; y++){
+                    for(var x = 0; x < tileImageData.width; x++){
+                        this.getPixelValue(imgData,x / upScale, y / upScale, res);
+                        tileImageData.data.set(res,(x + y * tileImageData.width) * 4);
                     }
                 }
-                tileCtx.putImageData(imgData, 0, 0)
-            }
+                tileCtx.putImageData(tileImageData, 0, 0)
+
             tile.complete = true;
             done(null, tile);
         };
@@ -201,6 +179,41 @@ L.TileLayer.Canvas = L.TileLayer.extend({
         }
 
         return tile;
+    },
+    getPixelValue: function(imgDat, x,y, result = []){ 
+        var i;
+        // clamp and floor coordinate
+        const ix1 = (x < 0 ? 0 : x >= imgDat.width ? imgDat.width - 1 : x)| 0;
+        const iy1 = (y < 0 ? 0 : y >= imgDat.height ? imgDat.height - 1 : y) | 0;
+        // get next pixel pos
+        const ix2 = ix1 === imgDat.width -1 ? ix1 : ix1 + 1;
+        const iy2 = iy1 === imgDat.height -1 ? iy1 : iy1 + 1;
+        // get interpolation position 
+        const xpos = x % 1;
+        const ypos = y % 1;
+        // get pixel index
+        var i1 = (ix1 + iy1 * imgDat.width) * 4;
+        var i2 = (ix2 + iy1 * imgDat.width) * 4;
+        var i3 = (ix1 + iy2 * imgDat.width) * 4;
+        var i4 = (ix2 + iy2 * imgDat.width) * 4;
+    
+        // to keep code short and readable get data alias
+        const d = imgDat.data;
+    
+        for(i = 0; i < 3; i ++){
+            // interpolate x for top and bottom pixels
+            const c1 = (d[i2] * d[i2++] - d[i1] * d[i1]) * xpos + d[i1] * d[i1 ++];
+            const c2 = (d[i4] * d[i4++] - d[i3] * d[i3]) * xpos + d[i3] * d[i3 ++];
+    
+            // now interpolate y
+            result[i] = Math.sqrt((c2 - c1) * ypos + c1);
+        }
+    
+        // and alpha is not logarithmic
+        const c1 = (d[i2] - d[i1]) * xpos + d[i1];
+        const c2 = (d[i4] - d[i3]) * xpos + d[i3];
+        result[3] = (c2 - c1) * ypos + c1;
+        return result;
     },
     _clearDelaysForZoom: function () {
         const prevZoom = this._delaysForZoom;
