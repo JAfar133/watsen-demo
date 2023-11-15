@@ -198,7 +198,10 @@ $('#step-control').on('click', function (e) {
     if ($(e.target).hasClass('step-control_date')) {
         const target_day = targetHtml.slice(0, 2)
         let selectedStep, step;
-        if (target_day === '21') {
+        step = (Number(target_day) - Number(start_day)) * 24 + Number(activeHour)
+        selectedStep = `${step}h`
+        console.log(step);
+        if (step > 72 ) {
             selectedStep = '72h'
             step = 72
             $('#step-control .step-control_hour.active').removeClass('active');
@@ -208,8 +211,6 @@ $('#step-control').on('click', function (e) {
         }
         else {
             $('#step-control .step-control_hour').removeClass('disabled');
-            step = (Number(target_day) - Number(start_day)) * 24 + Number(activeHour)
-            selectedStep = `${step}h`
         }
         if(step === 0){
             $('#step-control .add_hour:contains("-")').addClass('disabled');
@@ -310,11 +311,8 @@ $('#model-control').on('change',(e)=>{
 })
 
 function updateLayers(selectedStep, model) {
-    console.log(selectedStep, model);
     Object.entries(baseLayers).forEach(([name, layer]) => {
-        
         const newUrl = layer._url.replace(/\d+h/g, selectedStep).replace(data_source, model);
-        console.log(newUrl);
         layer.setUrl(newUrl);
     });
     $.getJSON(`./tiles/${model}/${selectedStep}/oper-${selectedStep}wind.json`, function (data) {
