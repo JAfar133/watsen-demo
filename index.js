@@ -45,13 +45,13 @@ function addLayerToMap(layer) {
     addGradientInfo(layer.options.data);
 }
 
-function createBaseLayers(step) {
+function createBaseLayers(step, data_source) {
     return {
-        "Ветер": createLayer(`../tiles/${step}/wind/{z}/{x}/{y}.png`, 'Ветер', 'wind'),
-        "Накопление осадков": createLayer(`../tiles/${step}/tp/{z}/{x}/{y}.png`, 'Накопление осадков', 'precipitation'),
-        "Температура": createLayer(`../tiles/${step}/st/{z}/{x}/{y}.png`, 'Температура', 'temperature'),
-        "Давление": createLayer(`../tiles/${step}/sp/{z}/{x}/{y}.png`, 'Давление', 'pressure', 20),
-        "Влажность 1000 гПа": createLayer(`../tiles/${step}/r/{z}/{x}/{y}.png`, 'Влажность 1000 гПа', 'humidity'),
+        "Ветер": createLayer(`../tiles/${data_source}/${step}/wind/{z}/{x}/{y}.png`, 'Ветер', 'wind'),
+        "Накопление осадков": createLayer(`../tiles/${data_source}/${step}/tp/{z}/{x}/{y}.png`, 'Накопление осадков', 'precipitation'),
+        "Температура": createLayer(`../tiles/${data_source}/${step}/st/{z}/{x}/{y}.png`, 'Температура', 'temperature'),
+        "Давление": createLayer(`../tiles/${data_source}/${step}/sp/{z}/{x}/{y}.png`, 'Давление', 'pressure', 20),
+        "Влажность 1000 гПа": createLayer(`../tiles/${data_source}/${step}/r/{z}/{x}/{y}.png`, 'Влажность 1000 гПа', 'humidity'),
         "OSM": osm
     };
 }
@@ -68,7 +68,7 @@ function createLayer(url, name, data, gradientLevel = 11) {
     });
 }
 
-function createLayers(step, defaultLayer, isAddWind) {
+function createLayers(step, defaultLayer, isAddWind, data_source) {
     map.eachLayer(layer => {
         if (layer instanceof L.TileLayer.Canvas || layer instanceof L.VelocityLayer) {
             map.removeLayer(layer);
@@ -79,14 +79,14 @@ function createLayers(step, defaultLayer, isAddWind) {
         layerControl.remove();
     }
     
-    baseLayers = createBaseLayers(step);
+    baseLayers = createBaseLayers(step, data_source);
     Object.entries(baseLayers).forEach(([name, layer]) => {
         if (name.trim() == defaultLayer.trim()) {
             addLayerToMap(layer);
         }
     });
 
-    $.getJSON(`./tiles/${step}/oper-${step}wind.json`, function (data) {
+    $.getJSON(`./tiles/${data_source}/${step}/oper-${step}wind.json`, function (data) {
         velocityLayer = L.velocityLayer({
             displayValues: true,
             displayOptions: {
@@ -114,11 +114,18 @@ function createLayers(step, defaultLayer, isAddWind) {
     });
 }
 
-const startStep = '24h';
+const startStep = '42h';
 const startLayer = 'Ветер';
-createLayers(startStep, startLayer, true);
+let data_source = 'ecmwf'
+let currentStep = Number(startStep.replace(/\D/g, ''));
+let start_day = 18;
+let start_hour = 0;
+let start_month = 'Янв';
+createLayers(startStep, startLayer, true, data_source);
+step_control_fill(start_day, start_hour, start_month)
+map.fitBounds([[-85.05112877980659, 180.0], [85.0511287798066, -180.0]]);
 map.on('load', ()=>{
-    map.setView([44.8, 34],7)
+    // map.setView([44.8, 34],3)
 })
 // Overlay layers (TMS)
 let currentLayerName;
@@ -149,15 +156,45 @@ map.on('layeradd', function (e) {
     currentLayerName = e.layer.options.name
 });
 
-map.fitBounds([[-85.05112877980659, 180.0], [85.0511287798066, -180.0]]);
-let currentStep = Number(startStep.slice(0, 2) || startStep.slice(0, 1));
+function step_control_fill(startDay, startHour, month) {
+    $('#day').empty()
+    $('#hour').empty()
+    function formatTime(time) {
+        return time < 10 ? `0${time}:00` : `${time}:00`;
+    }
+
+    function addSteps(containerSelector, startValue, stepCount,step, clazz, isActive) {
+        let container = $(containerSelector);
+
+        for (let i = 0; i < stepCount; i+=step) {
+            let step = $('<div>').addClass('step').addClass(clazz).text(formatTime((startValue + i) % 24));
+            if (isActive(i)) {
+                step.addClass('active');
+            }
+            container.append(step);
+        }
+    }
+    
+    addSteps('.hour', startHour, 24, 6,'step-control_hour', i => i === currentStep % 24);
+
+    addSteps('.day', startDay, 4, 1,'step-control_date', i => i === Math.floor(currentStep / 24));
+
+    $('.day .step').each(function (index) {
+        $(this).text(`${startDay + index} ${month}.`);
+    });
+    if(currentStep === 0){
+        $('#step-control .add_hour:contains("-")').addClass('disabled');
+    }
+    if(currentStep === 72){
+        $('#step-control .add_hour:contains("+")').addClass('disabled');
+        $('#step-control .step-control_hour:not(:contains("00:00"))').addClass('disabled');
+    }
+}
+
 $('#step-control').on('click', function (e) {
-    startDay = 18
-    startHour = 0
     const activeDate = $('#step-control .step-control_date.active').html()
     const activeHour = $('#step-control .step-control_hour.active').html().slice(0, 2)
     const targetHtml = $(e.target).html();
-
     if ($(e.target).hasClass('step-control_date')) {
         const target_day = targetHtml.slice(0, 2)
         let selectedStep, step;
@@ -171,7 +208,7 @@ $('#step-control').on('click', function (e) {
         }
         else {
             $('#step-control .step-control_hour').removeClass('disabled');
-            step = (Number(target_day) - Number(startDay)) * 24 + Number(activeHour)
+            step = (Number(target_day) - Number(start_day)) * 24 + Number(activeHour)
             selectedStep = `${step}h`
         }
         if(step === 0){
@@ -183,15 +220,15 @@ $('#step-control').on('click', function (e) {
         if(step !== 0){
             $('#step-control .add_hour:contains("-")').removeClass('disabled');
         }
-        updateLayers(selectedStep)
+        updateLayers(selectedStep, data_source)
         currentStep = step;
         $('#step-control .step-control_date.active').removeClass('active');
         $(e.target).addClass('active')
     } else if ($(e.target).hasClass('step-control_hour')) {
         const active_day = activeDate.slice(0, 2)
-        const step = (Number(active_day) - Number(startDay)) * 24 + Number(targetHtml.slice(0, 2))
+        const step = (Number(active_day) - Number(start_day)) * 24 + Number(targetHtml.slice(0, 2))
         const selectedStep = `${step}h`
-        updateLayers(selectedStep);
+        updateLayers(selectedStep, data_source);
         if(step === 0){
             $('#step-control .add_hour:contains("-")').addClass('disabled');
         }
@@ -207,7 +244,7 @@ $('#step-control').on('click', function (e) {
     } else if ($(e.target).hasClass('add_hour')) {
         if (targetHtml.includes('+')) {
             const step = currentStep + 6
-            const day = Math.floor(step / 24) + startDay;
+            const day = Math.floor(step / 24) + start_day;
             $('#step-control .add_hour:contains("-")').removeClass('disabled');
             if (step === 72) {
                 $(e.target).addClass('disabled')
@@ -217,17 +254,17 @@ $('#step-control').on('click', function (e) {
                 $('#step-control .step-control_hour.active').removeClass('active');
                 $('#step-control .step-control_hour:contains("00:00")').addClass('active');
                 $('#step-control .step-control_date.active').removeClass('active');
-                $(`#step-control .step-control_date:contains("${day} Янв.")`).addClass('active');
+                $(`#step-control .step-control_date:contains("${day} ${start_month}.")`).addClass('active');
             } else {
                 $('#step-control .step-control_hour.active').removeClass('active');
                 $(`#step-control .step-control_hour:contains("${Number(activeHour) + 6}:00")`).addClass('active');
             }
             const selectedStep = `${step}h`
             currentStep = step
-            updateLayers(selectedStep)
+            updateLayers(selectedStep, data_source)
         } else if (targetHtml.includes('-')) {
             const step = currentStep - 6
-            const day = Math.floor(step / 24) + startDay;
+            const day = Math.floor(step / 24) + start_day;
             $('#step-control .step-control_hour').removeClass('disabled');
             $('#step-control .add_hour:contains("+")').removeClass('disabled');
             if (step === 0) {
@@ -237,24 +274,50 @@ $('#step-control').on('click', function (e) {
                 $('#step-control .step-control_hour.active').removeClass('active');
                 $('#step-control .step-control_hour:contains("18:00")').addClass('active');
                 $('#step-control .step-control_date.active').removeClass('active');
-                $(`#step-control .step-control_date:contains("${day} Янв.")`).addClass('active');
+                $(`#step-control .step-control_date:contains("${day} ${start_month}.")`).addClass('active');
             } else {
                 $('#step-control .step-control_hour.active').removeClass('active');
                 $(`#step-control .step-control_hour:contains("${Number(activeHour) - 6}:00")`).addClass('active');
             }
             const selectedStep = `${step}h`
             currentStep = step
-            updateLayers(selectedStep)
+            updateLayers(selectedStep, data_source)
         }
     }
 });
 
-function updateLayers(selectedStep) {
+$('#model-control').on('change',(e)=>{
+    const model = $(e.target).val()
+    let startDay;
+    let startHour;
+    let month;
+    if(model === 'gfs'){
+        startDay = 14;
+        startHour = 0;
+        month = 'Ноя'
+    }
+    else {
+        startDay = 18;
+        startHour = 0;
+        month = 'Янв'
+    }
+    step_control_fill(startDay, startHour, month)
+    start_day = startDay;
+    start_hour = startHour;
+    start_month = month
+    updateLayers(`${currentStep}h`, model)
+    data_source = model;
+})
+
+function updateLayers(selectedStep, model) {
+    console.log(selectedStep, model);
     Object.entries(baseLayers).forEach(([name, layer]) => {
-        const newUrl = layer._url.replace(/\d+h/g, selectedStep);
+        
+        const newUrl = layer._url.replace(/\d+h/g, selectedStep).replace(data_source, model);
+        console.log(newUrl);
         layer.setUrl(newUrl);
     });
-    $.getJSON(`./tiles/${selectedStep}/oper-${selectedStep}wind.json`, function (data) {
+    $.getJSON(`./tiles/${model}/${selectedStep}/oper-${selectedStep}wind.json`, function (data) {
         velocityLayer.setData(data)
         const windChecked = $('.leaflet-control-layers-overlays input:checkbox').prop('checked');
         if(windChecked) {
@@ -263,8 +326,6 @@ function updateLayers(selectedStep) {
         }
     });
 }
-
-
 
 function addGradientInfo(data) {
     if(data){

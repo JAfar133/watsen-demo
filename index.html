@@ -65,23 +65,23 @@
     </div>
 </section>
 <div id="map"></div>
+<section class="rh_top">
+    <div class="model-control">
+        <select name="model" id="model-control">
+            <option value="ecmwf">ECMWF</option>
+            <option value="gfs">GFS</option>
+        </select>
+    </div>
+</section>
 <section class="rh_bottom" id="rh_bottom">
     <div class="step-control" id="step-control">
         <div style="pointer-events: auto;">
             <span class="add_hour step minus">-6ч</span>
         </div>
         <div class="container">
-            <div class="hour">
-                  <div class="step-control_hour step active">00:00</div> 
-                  <div class="step-control_hour step">06:00</div> 
-                  <div class="step-control_hour step">12:00</div> 
-                  <div class="step-control_hour step">18:00</div> 
+            <div class="hour" id="hour">
             </div>
-            <div class="day">
-                <div class="step-control_date step">18 Янв.</div>
-                <div class="step-control_date step active">19 Янв.</div>
-                <div class="step-control_date step">20 Янв.</div>
-                <div class="step-control_date step">21 Янв.</div>
+            <div class="day" id="day">
             </div>
         </div>
         <div style="pointer-events: auto;">

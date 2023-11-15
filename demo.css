@@ -108,6 +108,25 @@ canvas {
     color: white;
     text-decoration: none;
 }
+.rh_top .model-control {
+    margin: 20px;
+    display: flex;
+}
+#model-control {
+    background: rgba(0, 0, 0, 0.5);
+    color: #fff;
+    padding: 3px 10px;
+    border-radius: 1rem;
+    pointer-events: auto;
+}
+.rh_top {
+    position: absolute;
+    top: 0;
+    width: calc(100vw - 230px);
+    left: 230px;
+    height: 200px;
+    pointer-events: none;
+}
 .rh_bottom {
     position: absolute;
     bottom: 0;
@@ -132,19 +151,22 @@ canvas {
     display: flex;
     column-gap: 10px;
     pointer-events: auto;
+    border-radius: 1rem;
+    background: rgba(0, 0, 0, 0.5);
 }
 .rh_bottom .hour {
     display: flex;
+    border-radius: 1rem;
     column-gap: 5px;
     background: rgba(0, 0, 0, 0.5);
-    justify-content: space-between;
     pointer-events: auto;
 }
 .rh_bottom .day div {
-    background: rgba(0, 0, 0, 0.5);
     color: #fff;
     padding: 3px 10px;
-    width: 25%;
+    width: 100%;
+    border-radius: 1rem;
+    text-align: center;
 }
 .rh_bottom .hour div {
     color: #fff;
@@ -163,6 +185,7 @@ canvas {
 }
 .rh_bottom .step {
     cursor: pointer;
+    border-radius: 1rem;
 }
 .rh_bottom .step.disabled {
     cursor: auto;
@@ -170,19 +193,22 @@ canvas {
     color: #8b8888;
     /* background: rgba(0, 0, 0, 0.2); */
 }
-.rh_bottom .step.active {
+.rh_bottom .step.active, .rh_bottom .add_hour:hover {
+    box-shadow: 0 0 4px 0 #000;
     background: #4CAEFD;
 }
 .rh_bottom .step:hover {  
-    background: #4CAEFD;
+    /* background: #64b9ff;
+    border-radius: 1rem; */
 }
+
 .rh_bottom .add_hour.minus {
     height: 100%;
-    border-radius: 15px 0 0 15px;
+    border-radius: 0.9rem 5px 5px 0.9rem;
 }
 .rh_bottom .add_hour.plus {
     height: 100%;
-    border-radius: 0 15px 15px 0;
+    border-radius: 5px 0.9rem 0.9rem 5px;
 }
 .layer-gradient {
     position: absolute;
@@ -268,6 +294,10 @@ canvas {
 }
 @media (max-width:991px) {
     .rh_bottom{
+        width: 100vw;
+        left: 0;
+    }
+    .rh_top{
         width: 100vw;
         left: 0;
     }
@@ -392,6 +422,7 @@ canvas {
 }
 .leaflet-control-layers-base span.active {
     background: #4CAEFD;
+    box-shadow: 0 0 4px 0 #686767;
 }
 .leaflet-control-layers-base span:hover {
     background: #4CAEFD;
@@ -405,6 +436,7 @@ canvas {
 }
 .leaflet-control-layers-overlays span.active {
     background: #a17651;
+    box-shadow: 0 0 4px 0 #686767;
 }
 @media (min-width:991px) {
     .leaflet-control-layers-overlays span:hover {
