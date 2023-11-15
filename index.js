@@ -86,7 +86,7 @@ function createLayers(step, defaultLayer, isAddWind, data_source) {
         }
     });
 
-    $.getJSON(`./tiles/${data_source}/${step}/oper-${step}wind.json`, function (data) {
+    $.getJSON(`./tiles/${data_source}/${step}/oper-${step}-${data_source}-wind.json`, function (data) {
         velocityLayer = L.velocityLayer({
             displayValues: true,
             displayOptions: {
@@ -315,7 +315,7 @@ function updateLayers(selectedStep, model) {
         const newUrl = layer._url.replace(/\d+h/g, selectedStep).replace(data_source, model);
         layer.setUrl(newUrl);
     });
-    $.getJSON(`./tiles/${model}/${selectedStep}/oper-${selectedStep}wind.json`, function (data) {
+    $.getJSON(`./tiles/${model}/${selectedStep}/oper-${selectedStep}-${model}-wind.json`, function (data) {
         velocityLayer.setData(data)
         const windChecked = $('.leaflet-control-layers-overlays input:checkbox').prop('checked');
         if(windChecked) {
