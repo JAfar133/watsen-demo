@@ -9,7 +9,6 @@
  */
 // -- L.DomUtil.setTransform from leaflet 1.0.0 to work on 0.0.7
 //------------------------------------------------------------------------------
-// const worker1 = new Worker('../leaflet-velocity/worker.js');
 if (!L.DomUtil.setTransform) {
   L.DomUtil.setTransform = function (el, offset, scale) {
     var pos = offset || new L.Point(0, 0);
@@ -425,7 +424,6 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
     var bounds = this._map.getBounds();
 
     var size = this._map.getSize(); // bounds, width, height, extent
-
     this._windy.start([[0, 0], [size.x, size.y]], size.x, size.y, [[bounds._southWest.lng, bounds._southWest.lat], [bounds._northEast.lng, bounds._northEast.lat]]);
   },
   _initWindy: function _initWindy(self) {
@@ -836,13 +834,6 @@ var Windy = function Windy(params) {
     var velocityScale = VELOCITY_SCALE * Math.pow(mapArea, 0.4);
     var columns = [];
     var x = bounds.x;
-    // worker1.postMessage({x: 0,y: 490});
-    // console.log(params.map.getProjection());
-
-    //   worker1.onmessage = function (event) {
-    //       var result = event.data;
-    //       console.log('Результат из воркера:', result);
-    //   };
     function interpolateColumn(x) {
       var column = [];
       

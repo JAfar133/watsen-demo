@@ -47,7 +47,7 @@ function addLayerToMap(layer) {
 
 function createBaseLayers(step, data_source) {
     return {
-        "Ветер": createLayer(`../tiles/${data_source}/${step}/wind/{z}/{x}/{y}.png`, 'Ветер', 'wind'),
+        "Ветер": createLayer(`../tiles/wind_test/{z}/{x}/{y}.png`, 'Ветер', 'wind'),
         "Накопление осадков": createLayer(`../tiles/${data_source}/${step}/tp/{z}/{x}/{y}.png`, 'Накопление осадков', 'precipitation'),
         "Температура": createLayer(`../tiles/${data_source}/${step}/st/{z}/{x}/{y}.png`, 'Температура', 'temperature'),
         "Давление": createLayer(`../tiles/${data_source}/${step}/sp/{z}/{x}/{y}.png`, 'Давление', 'pressure', 20),
@@ -86,7 +86,7 @@ function createLayers(step, defaultLayer, isAddWind, data_source) {
         }
     });
 
-    $.getJSON(`./tiles/${data_source}/${step}/oper-${step}-${data_source}-wind.json`, function (data) {
+    $.getJSON(`./tiles/wind_test/wind-test.json`, function (data) {
         velocityLayer = L.velocityLayer({
             displayValues: true,
             displayOptions: {
@@ -124,9 +124,7 @@ let start_month = 'Янв';
 createLayers(startStep, startLayer, true, data_source);
 step_control_fill(start_day, start_hour, start_month)
 map.fitBounds([[-85.05112877980659, 180.0], [85.0511287798066, -180.0]]);
-map.on('load', ()=>{
-    // map.setView([44.8, 34],3)
-})
+
 // Overlay layers (TMS)
 let currentLayerName;
 map.on('baselayerchange', function (e) {
@@ -200,8 +198,7 @@ $('#step-control').on('click', function (e) {
         let selectedStep, step;
         step = (Number(target_day) - Number(start_day)) * 24 + Number(activeHour)
         selectedStep = `${step}h`
-        console.log(step);
-        if (step > 72 ) {
+        if (step >= 72 ) {
             selectedStep = '72h'
             step = 72
             $('#step-control .step-control_hour.active').removeClass('active');
@@ -354,9 +351,9 @@ function calculateLinearGradient(gradientData, dataType) {
     if (window.innerWidth < 991) {
         return gradientData
             .filter((color, index) => shouldIncludeColor(index, dataType))
-            .map(color => `rgb(${color[0]}, ${color[1]}, ${color[2]})`);
+            .map(color => `rgb(${color.data[0]}, ${color.data[1]}, ${color.data[2]})`);
     } else {
-        return gradientData.map(color => `rgb(${color[0]}, ${color[1]}, ${color[2]})`);
+        return gradientData.map(color => `rgb(${color.data[0]}, ${color.data[1]}, ${color.data[2]})`);
     }
 }
 
