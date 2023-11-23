@@ -80,11 +80,11 @@ function createLayers(step, defaultLayer, isAddWind, data_source) {
     }
     
     baseLayers = createBaseLayers(step, data_source);
-    Object.entries(baseLayers).forEach(([name, layer]) => {
-        if (name.trim() == defaultLayer.trim()) {
-            addLayerToMap(layer);
-        }
-    });
+    // Object.entries(baseLayers).forEach(([name, layer]) => {
+    //     if (name.trim() == defaultLayer.trim()) {
+    //         addLayerToMap(layer);
+    //     }
+    // });
 
     $.getJSON(`./tiles/wind_test/wind-test.json`, function (data) {
         velocityLayer = L.velocityLayer({
@@ -112,6 +112,11 @@ function createLayers(step, defaultLayer, isAddWind, data_source) {
         $('.leaflet-control-layers-base input:checked').siblings('span').text(defaultLayer).addClass('active');
         
     });
+
+
+    const canvasLayer = L.myVelocityLayer({}).addTo(map);
+
+
 }
 
 const startStep = '42h';
@@ -121,7 +126,7 @@ let currentStep = Number(startStep.replace(/\D/g, ''));
 let start_day = 18;
 let start_hour = 0;
 let start_month = 'Янв';
-createLayers(startStep, startLayer, true, data_source);
+createLayers(startStep, startLayer, false, data_source);
 step_control_fill(start_day, start_hour, start_month)
 map.fitBounds([[-85.05112877980659, 180.0], [85.0511287798066, -180.0]]);
 
