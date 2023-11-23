@@ -22,11 +22,22 @@ L.MyCanvasLayer = (L.Layer ? L.Layer : L.Class).extend({
     this._map = null;
     this._canvas = null;
     this._frame = null;
+    this.MAX_PARTICLE_AGE = 80,
+    this.WIND_MULTIPLIER = 0.04
+    this.OPACITY = 0.6
     L.setOptions(this, options);
   },
   delegate: function delegate(del) {
     this._delegate = del;
     return this;
+  },
+  onRemove: function onRemove(map) {
+    var del = this._delegate || this;
+    del.onLayerWillUnmount && del.onLayerWillUnmount(); // -- callback
+
+    this.options.pane.removeChild(this._canvas);
+    map.off(this.getEvents(), this);
+    this._canvas = null;
   },
   onAdd: function onAdd(map) {
     this._map = map;
@@ -46,40 +57,30 @@ L.MyCanvasLayer = (L.Layer ? L.Layer : L.Class).extend({
 
     self._onLayerDidMove();
   },
-  //-------------------------------------------------------------
-  getNewCoordinates: function getNewCoordinates(coord, targetZoom) {
-    // Функция для растяжения координат тайла для более высокого зума
-    const factor = 2 ** (targetZoom - coord.z);
-    return {
-        x: coord.x * factor,
-        y: coord.y * factor,
-        z: targetZoom
-    };
-  },
-  //------------------------------------------------------------------------------
+ 
   drawLayer: function drawLayer() {
-    // -- todo make the viewInfo properties  flat objects.
     var size = this._map.getSize();
-
     var bounds = this._map.getBounds();
-
     var zoom = this._map.getZoom();
-
     var topLeft = this._map.project(bounds.getNorthWest(), zoom);
     var bottomRight = this._map.project(bounds.getSouthEast(), zoom);
+
     let MAX_ZOOM = 3
+    
     if (zoom < 4) MAX_ZOOM = 1
     else if(zoom < 8) MAX_ZOOM = 2
     else MAX_ZOOM = 3
+
     const tileSize = 256;
     const zoomFactor = 2**(zoom - MAX_ZOOM)
     const scaledTileSize = zoomFactor * tileSize
-    var startTileX = Math.floor(topLeft.x / tileSize);
-    var startTileY = Math.floor(topLeft.y / tileSize);
-    var endTileX = Math.ceil(bottomRight.x / tileSize);
-    var endTileY = Math.ceil(bottomRight.y / tileSize);
-    var leftOffset = 0;
-    var topOffset = 0
+
+    let startTileX = Math.floor(topLeft.x / tileSize);
+    let startTileY = Math.floor(topLeft.y / tileSize);
+    let endTileX = Math.ceil(bottomRight.x / tileSize) - 1;
+    let endTileY = Math.ceil(bottomRight.y / tileSize) - 1;
+    let leftOffset = 0;
+    let topOffset = 0
 
     if(zoom > MAX_ZOOM) {
       startTileY = Math.round(startTileY / zoomFactor) * zoomFactor - zoomFactor;
@@ -91,12 +92,17 @@ L.MyCanvasLayer = (L.Layer ? L.Layer : L.Class).extend({
 
     leftOffset += topLeft.x - (startTileX * tileSize);
     topOffset += topLeft.y - (startTileY * tileSize);
-
-    const ctx = this._canvas.getContext('2d')
+    const canvas = document.createElement('canvas')
+    canvas.width = this._canvas.width;
+    canvas.height = this._canvas.height;
+    const ctx = canvas.getContext('2d')
     ctx.clearRect(0, 0, 3000, 3000)
     ctx.globalAlpha = 0.85
     let countX = 0;
     let countY = 0;
+
+    const promises = [];
+
     for (var tileX = startTileX; tileX <= endTileX; tileX++) {
         for (var tileY = startTileY; tileY <= endTileY; tileY++) {
             const range = 2 ** zoom
@@ -115,14 +121,14 @@ L.MyCanvasLayer = (L.Layer ? L.Layer : L.Class).extend({
                   z: z,
               };
               if(countY % 1 === 0 && countX % 1 === 0){
-                draw(scaledCoords, countX, countY, scaledTileSize, leftOffset, topOffset) 
+                promises.push(draw(scaledCoords, countX, countY, scaledTileSize, leftOffset, topOffset));
               }
                 
               countY+=tileSize/scaledTileSize
             }
             
             else {
-              draw(coord, countX, countY, tileSize, leftOffset, topOffset)
+              promises.push(draw(coord, countX, countY, tileSize, leftOffset, topOffset));
               countY++;
             }
         }
@@ -134,17 +140,81 @@ L.MyCanvasLayer = (L.Layer ? L.Layer : L.Class).extend({
     }
 
     function draw(coord, countX, countY, size, offsetLeft, offsetTop) {
-      if(coord.x >= 0 && coord.y >= 0){
-        const img = new Image()
-        img.src = `../tiles/wind_test/${coord.z}/${coord.x}/${coord.y}.png`
-        img.onload = () => {
+      return new Promise((resolve, reject) => {
+        if (coord.x >= 0 && coord.y >= 0) {
+          const img = new Image();
+          img.src = `../tiles/wind_test/${coord.z}/${coord.x}/${coord.y}.png`;
+          img.onload = () => {
             const tileX = countX * size - offsetLeft;
             const tileY = countY * size - offsetTop;
-            ctx.drawImage(img, 0, 0, img.width, img.height, tileX, tileY, size, size)
-          }
-      }
+            ctx.drawImage(img, 0, 0, img.width, img.height, tileX, tileY, size, size);
+            resolve();
+          };
+          img.onerror = (error) => {
+            resolve();
+          };
+        } else {
+          resolve();
+        }
+      });
     }
+    Promise.all(promises)
+    .finally(() => {
+      var prev = "lighter";
+      const MAX_PARTICLE_AGE = this.MAX_PARTICLE_AGE
+      const WIND_MULTIPLIER = this.WIND_MULTIPLIER;
+      const particles = this.getWindDataFromCanvas(canvas);
+      const mainCanvas = this._canvas;
+      const mainCtx = this._canvas.getContext('2d')
+      mainCtx.globalCompositeOperation = "destination-in";
+      mainCtx.globalCompositeOperation = prev;
+      mainCtx.globalAlpha = this.OPACITY; // Draw new particle trails.
+      function drawParticle(particle) {
+         // Длина черточки, представляющей вектор ветра
+          const lineLength = 5;
 
+          // Вычисление конечных координат для черточки в направлении ветра
+          const endX = particle.xt + lineLength * Math.cos(-particle.wd);
+          const endY = particle.yt + lineLength * Math.sin(-particle.wd);
+
+          // Отрисовка черточки
+          mainCtx.beginPath();
+          mainCtx.moveTo(particle.xt, particle.yt);
+          mainCtx.lineTo(endX, endY);
+          mainCtx.strokeStyle = 'white';
+          mainCtx.lineWidth = particle.ws / 10; // Ширина линии черточки
+          mainCtx.stroke();
+      }
+      
+      function updateParticle(particle) {
+        particle.age++;
+
+        const windX = particle.ws * Math.cos(-particle.wd) * WIND_MULTIPLIER;
+        const windY = particle.ws * Math.sin(-particle.wd) * WIND_MULTIPLIER;
+
+        particle.xt += windX;
+        particle.yt += windY;
+
+        if (particle.age >= MAX_PARTICLE_AGE) {
+            particle.xt = particle.x;
+            particle.yt = particle.y;
+            particle.age = 0;
+        }
+    }
+      
+      function animateParticles() {
+        mainCtx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
+      
+        particles.forEach((particle, index) => {
+          updateParticle(particle);
+          drawParticle(particle);
+        });
+      
+        requestAnimationFrame(animateParticles);
+      }
+      
+      animateParticles();
+    });
     var center = this._map.options.crs.project(this._map.getCenter());
 
     var corner = this._map.options.crs.project(this._map.containerPointToLatLng(this._map.getSize()));
@@ -161,7 +231,72 @@ L.MyCanvasLayer = (L.Layer ? L.Layer : L.Class).extend({
     });
     this._frame = null;
   },
+  getWindDataFromCanvas: function (canvas) {
+    const ctx = canvas.getContext('2d');
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    return this.decodeColorToParticles(imageData)
+  },
+  
+  decodeColorToParticles: function(imgData) {
+    const particles = []
+    const data = imgData.data;
+    const width = imgData.width;
+    const zoom = this._map.getZoom()
+    let step = 27;
+    for (let y = 0; y < imgData.height; y+=step) {
+        for (let x = 0; x < width; x+=step) {
+            const index = (y * width + x) * 4;
 
+            // const { u_data, v_data } = this.getWindDataFromPixel([
+            //     data[index],
+            //     data[index + 1],
+            //     data[index + 2]
+            // ]);
+            // const wind_speed = Math.sqrt(u_data**2, v_data**2);
+
+            // const wind_direction = Math.atan2(v_data, u_data);
+            // const age = Math.floor(Math.random() * MAX_PARTICLE_AGE)
+
+            const { wind_speed, wind_direction } = this.getWindDataFromPixel([
+                data[index],
+                data[index + 1],
+                data[index + 2]
+            ]);
+            particles.push({
+              age: Math.random() * this.MAX_PARTICLE_AGE,
+              x: x,
+              y: y,
+              ws: wind_speed,
+              wd: wind_direction,
+              xy: x,
+              yt: y
+            })
+        }
+    }
+
+    return particles;
+  },
+  getWindDataFromPixel: function(pixel) {
+      const [r, g, b] = pixel;
+      // let u_data = g * 35 / 255;
+      // let v_data = b * 35 / 255;
+      // const r_string = r.toString()
+      // if (parseInt(r_string[1], 10) === 0) {
+      //     u_data *= -1;
+      // }
+
+      // if (parseInt(r_string[2], 10) === 0) {
+      //     v_data *= -1;
+      // }
+
+      // return {v_data, u_data}
+
+      const wind_speed = b * 50 / 255
+      const wind_direction = g / 255 * 2 * Math.PI - Math.PI
+
+      return {wind_speed, wind_direction}
+  },
+  
   // -- L.DomUtil.setTransform from leaflet 1.0.0 to work on 0.0.7
   //------------------------------------------------------------------------------
   _setTransform: function _setTransform(el, offset, scale) {
@@ -238,6 +373,9 @@ L.MyVelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
   initialize: function initialize(options) {
     L.setOptions(this, options);
   },
+  onRemove: function onRemove(map) {
+    this._destroyWind();
+  },
   onAdd: function onAdd(map) {
     // determine where to add the layer
     this._paneName = this.options.paneName || "overlayPane"; // fall back to overlayPane for leaflet < 1
@@ -273,149 +411,16 @@ L.MyVelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
   setOptions: function setOptions(options) {
     
   },
+  _destroyWind: function _destroyWind() {
+    if (this._timer) clearTimeout(this._timer);
+    if (this._windy) this._windy.stop();
+    if (this._context) this._context.clearRect(0, 0, 3000, 3000);
+    if (this._mouseControl) this._map.removeControl(this._mouseControl);
+
+    this._map.removeLayer(this._canvasLayer);
+  }
 });
 
 L.myVelocityLayer = function (options) {
   return new L.MyVelocityLayer(options);
 };
-
-
-// _getData: function _getData() {
-//     function downloadCanvasImage(dataUrl) {
-//       const a = document.createElement('a');
-//       a.href = dataUrl;
-//       a.download = "test.jpg";
-//       document.body.appendChild(a);
-//       a.click();
-//       document.body.removeChild(a);
-//   }
-//     return new Promise((resolve, reject) => {
-//         const bounds = map.getBounds();
-//         const zoom = map.getZoom();
-//         const size = map.getSize();
-//         const url1 = `../tiles/wind_test/1/1/1.png`;
-//         const url2 = `../tiles/wind_test/1/0/1.png`;
-//         const url3 = `../tiles/wind_test/1/1/0.png`;
-//         const url4 = `../tiles/wind_test/1/0/0.png`;
-//         const dataCanvas = document.createElement('canvas');
-//         dataCanvas.width = 512;
-//         dataCanvas.height = 512;
-//         const dataCtx = dataCanvas.getContext('2d');
-//         const urls = [url1, url2, url3, url4];
-
-//         let imagesLoaded = 0;
-
-//         urls.forEach((url, index) => {
-//             const img = new Image();
-//             img.src = url;
-//             img.onload = () => {
-//                 if (index === 0) {
-//                     dataCtx.drawImage(img, 0, 0, img.width, img.height, 0, 0, img.width, img.height);
-//                 }
-//                 if (index === 1) {
-//                     dataCtx.drawImage(img, 0, 0, img.width, img.height, 256, 0, img.width, img.height);
-//                 }
-//                 if (index === 2) {
-//                     dataCtx.drawImage(img, 0, 0, img.width, img.height, 0, 256, img.width, img.height);
-//                 }
-//                 if (index === 3) {
-//                     dataCtx.drawImage(img, 0, 0, img.width, img.height, 256, 256, img.width, img.height);
-
-//                     setTimeout(() => {
-//                         const wind_layer = document.createElement('canvas');
-//                         const pane = map.createPane('wind_pane')
-
-//                         wind_layer.width = 1440;
-//                         wind_layer.height = 721;
-
-//                         const wind_layer_ctx = wind_layer.getContext('2d')
-//                         wind_layer_ctx.drawImage(dataCanvas, 0, 0, wind_layer.width, wind_layer.height)
-//                         downloadCanvasImage(dataCanvas.toDataURL())
-//                         downloadCanvasImage(dataCanvas.toDataURL())
-//                         const imgData = wind_layer_ctx.getImageData(0, 0, wind_layer.width, wind_layer.height)
-//                         const { u_data, v_data } = decodeColorToWindData(imgData)
-//                         let lo1 = -180
-//                         let la1 = 90
-    
-//                         let lo2 = 180
-//                         let la2 = -90
-//                         const dx = 0.25
-//                         const dy = 0.25
-
-//                         const data = [
-//                             {
-//                                 header: {
-//                                     "lo1": lo1,
-//                                     "la1": la1,
-//                                     "lo2": lo2,
-//                                     "la2": la2,
-//                                     "dx": dx,
-//                                     "dy": dy,
-//                                     "nx": wind_layer.width,
-//                                     "ny": wind_layer.height,
-//                                     "parameterNumber": 2,
-//                                     "parameterCategory": 2
-//                                 },
-//                                 data: u_data
-//                             },
-//                             {
-//                                 header: {
-//                                     "lo1": lo1,
-//                                     "la1": la1,
-//                                     "lo2": lo2,
-//                                     "la2": la2,
-//                                     "dx": dx,
-//                                     "dy": dy,
-//                                     "nx": wind_layer.width,
-//                                     "ny": wind_layer.height,
-//                                     "parameterNumber": 3,
-//                                     "parameterCategory": 2
-//                                 },
-//                                 data: v_data
-//                             },
-//                         ]
-
-//                         resolve(data);
-//                     }, 100)
-//                 }
-//             };
-//         });
-//     });
-//       function decodeColorToWindData(imgData) {
-//         const u_data_array = [];
-//         const v_data_array = [];
-//         const data = imgData.data;
-//         const width = imgData.width;
-
-//         for (let y = 0; y < imgData.height; y++) {
-//             for (let x = 0; x < width; x++) {
-//                 const index = (y * width + x) * 4;
-
-//                 const { u_data, v_data } = getWindDataFromPixel([
-//                     data[index],
-//                     data[index + 1],
-//                     data[index + 2]
-//                 ]);
-
-//                 u_data_array.push(u_data);
-//                 v_data_array.push(v_data);
-//             }
-//         }
-
-//         return { u_data: u_data_array, v_data: v_data_array };
-//     }
-//     function getWindDataFromPixel(pixel) {
-//         const [r, g, b] = pixel;
-//         let u_data = g * 35 / 255;
-//         let v_data = b * 35 / 255;
-//         const r_string = r.toString()
-//         if (parseInt(r_string[1], 10) === 0) {
-//             u_data *= -1;
-//         }
-    
-//         if (parseInt(r_string[2], 10) === 0) {
-//             v_data *= -1;
-//         }
-    
-//         return {v_data, u_data}
-//     }

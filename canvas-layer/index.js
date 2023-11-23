@@ -172,9 +172,12 @@ L.TileLayer.Canvas = L.TileLayer.extend({
 
     getWindSpeedFromPixel: function(pixel) {
         const [r, g, b] = pixel;
-        let u_data = g * 35 / 255;
-        let v_data = b * 35 / 255;
-        return Math.sqrt(Math.pow(u_data, 2) + Math.pow(v_data, 2))
+        // let u_data = g * 35 / 255;
+        // let v_data = b * 35 / 255;
+        // return Math.sqrt(Math.pow(u_data, 2) + Math.pow(v_data, 2))
+
+        const wind_speed = b * 50 / 255
+        return wind_speed
     },
     createTile: function (coords, done) {
         const {timeout} = this.options;

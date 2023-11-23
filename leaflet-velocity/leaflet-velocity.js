@@ -856,7 +856,7 @@ var Windy = function Windy(params) {
       }
       columns[x + 1] = columns[x] = column;
     }
-
+    
     (function batchInterpolate() {
       var start = Date.now();
 
@@ -909,6 +909,7 @@ var Windy = function Windy(params) {
       buckets.forEach(function (bucket) {
         bucket.length = 0;
       });
+      
       particles.forEach(function (particle) {
         if (particle.age > MAX_PARTICLE_AGE) {
           field.randomize(particle).age = 0;
@@ -954,7 +955,7 @@ var Windy = function Windy(params) {
       g.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
       g.globalCompositeOperation = prev;
       g.globalAlpha = OPACITY === 0 ? 0 : OPACITY * 0.9; // Draw new particle trails.
-
+      
       buckets.forEach(function (bucket, i) {
         if (bucket.length > 0) {
           g.beginPath();

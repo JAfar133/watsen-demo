@@ -80,11 +80,11 @@ function createLayers(step, defaultLayer, isAddWind, data_source) {
     }
     
     baseLayers = createBaseLayers(step, data_source);
-    // Object.entries(baseLayers).forEach(([name, layer]) => {
-    //     if (name.trim() == defaultLayer.trim()) {
-    //         addLayerToMap(layer);
-    //     }
-    // });
+    Object.entries(baseLayers).forEach(([name, layer]) => {
+        if (name.trim() == defaultLayer.trim()) {
+            addLayerToMap(layer);
+        }
+    });
 
     $.getJSON(`./tiles/wind_test/wind-test.json`, function (data) {
         velocityLayer = L.velocityLayer({
@@ -103,18 +103,19 @@ function createLayers(step, defaultLayer, isAddWind, data_source) {
             
         });
         isAddWind && velocityLayer.addTo(map);
-        const layers = { "Анимация ветра": velocityLayer };
+        const canvasLayer = L.myVelocityLayer({}).addTo(map);
+        const layers = { "Velocity анимация": velocityLayer, "Кастомная анимация": canvasLayer };
 
         layerControl = L.control.layers(baseLayers, layers, { collapsed: false }).addTo(map);
-        
+        console.log(layerControl._overlaysList);
         const windCheckbox = $(layerControl._overlaysList).find('input[type="checkbox"]');
-        isAddWind && windCheckbox.siblings('span').addClass('active');
+        windCheckbox.siblings('span:contains("Кастомная анимация")').addClass('active');
         $('.leaflet-control-layers-base input:checked').siblings('span').text(defaultLayer).addClass('active');
         
     });
 
 
-    const canvasLayer = L.myVelocityLayer({}).addTo(map);
+    
 
 
 }
@@ -137,11 +138,11 @@ map.on('baselayerchange', function (e) {
 });
 
 map.on('overlayadd', function (e) {
-    $(layerControl._overlaysList).find('input[type="checkbox"]').siblings('span').addClass('active');
+    $(layerControl._overlaysList).find(`input[type="checkbox"]`).siblings(`span:contains("${e.name}")`).addClass('active');
 });
 
 map.on('overlayremove', function (e) {
-    $(layerControl._overlaysList).find('input[type="checkbox"]').siblings('span').removeClass('active');
+    $(layerControl._overlaysList).find(`input[type="checkbox"]`).siblings(`span:contains("${e.name}")`).removeClass('active');
 });
 
 map.on('layeradd', function (e) {
