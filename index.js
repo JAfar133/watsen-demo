@@ -70,7 +70,7 @@ function createLayer(url, name, data, gradientLevel = 11) {
 
 function createLayers(step, defaultLayer, isAddWind, data_source) {
     map.eachLayer(layer => {
-        if (layer instanceof L.TileLayer.Canvas || layer instanceof L.VelocityLayer) {
+        if (layer instanceof L.TileLayer.Canvas || layer instanceof L.MyVelocityLayer) {
             map.removeLayer(layer);
         }
     });
@@ -85,39 +85,18 @@ function createLayers(step, defaultLayer, isAddWind, data_source) {
             addLayerToMap(layer);
         }
     });
-
-    $.getJSON(`./tiles/wind_test/wind-test.json`, function (data) {
-        velocityLayer = L.velocityLayer({
-            displayValues: true,
-            displayOptions: {
-                velocityType: "",
-                position: "bottomleft",
-                emptyString: "No wind data",
-                showCardinal: true,
-            },
-            data: data,
-            opacity: 0.8,
-            velocityScale: 0.0025,
-            colorScale: ['#ffffff', '#F6F6F6', '#EDEDED'],
-            particleMultiplier: 1/320
-            
-        });
-        isAddWind && velocityLayer.addTo(map);
+    setTimeout(()=>{
         const canvasLayer = L.myVelocityLayer({}).addTo(map);
-        const layers = { "Velocity анимация": velocityLayer, "Кастомная анимация": canvasLayer };
-
+        const layers = { "Кастомная анимация": canvasLayer };
+    
         layerControl = L.control.layers(baseLayers, layers, { collapsed: false }).addTo(map);
         console.log(layerControl._overlaysList);
         const windCheckbox = $(layerControl._overlaysList).find('input[type="checkbox"]');
         windCheckbox.siblings('span:contains("Кастомная анимация")').addClass('active');
         $('.leaflet-control-layers-base input:checked').siblings('span').text(defaultLayer).addClass('active');
-        
-    });
-
-
+    }, 200)
     
-
-
+        
 }
 
 const startStep = '42h';
@@ -392,43 +371,12 @@ function shouldSkipUnit(index, dataType) {
 
 map.on('zoom', () => {
     const currentZoom = map.getZoom();
-    let colorScale, particleMultiplier;
     if (currentZoom > 11) {
         currentLayer.setUrl(osm._url);
-        colorScale = velocityLayer._windy.defaulColorScale;
-        particleMultiplier = 0.1 / 320;
+        
     } else {
         currentLayer.setUrl(windy._url);
-        if (currentZoom > 8) {
-            colorScale = velocityLayer.options.colorScale;
-            particleMultiplier = 0.3 / 320;
-        } else if (currentZoom > 5) {
-            colorScale = velocityLayer.options.colorScale;
-            particleMultiplier = 0.6 / 320;
-        } else {
-            colorScale = velocityLayer.options.colorScale;
-            particleMultiplier = velocityLayer.options.particleMultiplier;
-        }
+        
     }
 
-    updateVelocityLayer(colorScale, particleMultiplier);
 });
-
-
-function updateVelocityLayer(colorScale, particleMultiplier) {
-    if (map.hasLayer(velocityLayer)) {
-        if(map.hasLayer(osm)){
-            velocityLayer._windy.updateParams(velocityLayer._windy.defaulColorScale, particleMultiplier);
-        }
-        else velocityLayer._windy.updateParams(colorScale, particleMultiplier);
-    }
-}
-
-function switchToLayer(current, to) {
-    if(!map.hasLayer(to)){
-        map.addLayer(to)
-        map.removeLayer(current)
-    }
-}
-
-

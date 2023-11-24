@@ -766,6 +766,7 @@ var Windy = function Windy(params) {
      * @returns {Array} wind vector [u, v, magnitude] at the point (x, y), or [NaN, NaN, null] if wind
      *          is undefined at that point.
      */
+    console.log(columns);
     function field(x, y) {
       var column = columns[Math.round(x)];
       return column && column[Math.round(y)] || NULL_WIND_VECTOR;
@@ -955,7 +956,6 @@ var Windy = function Windy(params) {
       g.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
       g.globalCompositeOperation = prev;
       g.globalAlpha = OPACITY === 0 ? 0 : OPACITY * 0.9; // Draw new particle trails.
-      
       buckets.forEach(function (bucket, i) {
         if (bucket.length > 0) {
           g.beginPath();

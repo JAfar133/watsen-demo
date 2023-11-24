@@ -22,13 +22,22 @@ L.MyCanvasLayer = (L.Layer ? L.Layer : L.Class).extend({
     this._map = null;
     this._canvas = null;
     this._frame = null;
+    this._delegate = null;
     this.MAX_PARTICLE_AGE = 80,
     this.WIND_MULTIPLIER = 0.04
-    this.OPACITY = 0.6
+    this.OPACITY = 0.97
+    this.animationLoop = null;
     L.setOptions(this, options);
   },
   delegate: function delegate(del) {
     this._delegate = del;
+    return this;
+  },
+  needRedraw: function needRedraw() {
+    if (!this._frame) {
+      this._frame = L.Util.requestAnimFrame(this.drawLayer, this);
+    }
+
     return this;
   },
   onRemove: function onRemove(map) {
@@ -38,6 +47,10 @@ L.MyCanvasLayer = (L.Layer ? L.Layer : L.Class).extend({
     this.options.pane.removeChild(this._canvas);
     map.off(this.getEvents(), this);
     this._canvas = null;
+  },
+  addTo: function addTo(map) {
+    map.addLayer(this);
+    return this;
   },
   onAdd: function onAdd(map) {
     this._map = map;
@@ -53,18 +66,231 @@ L.MyCanvasLayer = (L.Layer ? L.Layer : L.Class).extend({
     L.DomUtil.addClass(this._canvas, "wind-animate")
     this.options.pane.appendChild(this._canvas);
     map.on(this.getEvents(), this);
+
+    var del = this._delegate || this;
+    del.onLayerDidMount && del.onLayerDidMount(); // -- callback
+
+    // this.needRedraw();
     var self = this;
 
     self._onLayerDidMove();
   },
- 
-  drawLayer: function drawLayer() {
-    var size = this._map.getSize();
-    var bounds = this._map.getBounds();
-    var zoom = this._map.getZoom();
-    var topLeft = this._map.project(bounds.getNorthWest(), zoom);
-    var bottomRight = this._map.project(bounds.getSouthEast(), zoom);
+  needRedraw: function needRedraw() {
+    if (!this._frame) {
+      this._frame = L.Util.requestAnimFrame(this.drawLayer, this);
+    }
 
+    return this;
+  },
+  drawLayer: function drawLayer() {
+    let animationLoop = this.animationLoop;
+
+    var size = this._map.getSize();
+
+    var bounds = this._map.getBounds();
+
+    var zoom = this._map.getZoom();
+
+    
+    var center = this._map.options.crs.project(this._map.getCenter());
+
+    var corner = this._map.options.crs.project(this._map.containerPointToLatLng(this._map.getSize()));
+
+    var del = this._delegate || this;
+    del.onDrawLayer && del.onDrawLayer({
+      layer: this,
+      canvas: this._canvas,
+      bounds: bounds,
+      size: size,
+      zoom: zoom,
+      center: center,
+      corner: corner
+    });
+    this._frame = null;
+  },
+  
+  // -- L.DomUtil.setTransform from leaflet 1.0.0 to work on 0.0.7
+  //------------------------------------------------------------------------------
+  _setTransform: function _setTransform(el, offset, scale) {
+    var pos = offset || new L.Point(0, 0);
+    el.style[L.DomUtil.TRANSFORM] = (L.Browser.ie3d ? "translate(" + pos.x + "px," + pos.y + "px)" : "translate3d(" + pos.x + "px," + pos.y + "px,0)") + (scale ? " scale(" + scale + ")" : "");
+  },
+  //------------------------------------------------------------------------------
+  _animateZoom: function _animateZoom(e) {
+    var scale = this._map.getZoomScale(e.zoom); // -- different calc of offset in leaflet 1.0.0 and 0.0.7 thanks for 1.0.0-rc2 calc @jduggan1
+    const ctx = this._canvas.getContext('2d')
+    ctx.clearRect(0, 0, 3000, 3000)
+    var offset = L.Layer ? this._map._latLngToNewLayerPoint(this._map.getBounds().getNorthWest(), e.zoom, e.center) : this._map._getCenterOffset(e.center)._multiplyBy(-scale).subtract(this._map._getMapPanePos());
+    L.DomUtil.setTransform(this._canvas, offset, scale);
+  },
+  //-------------------------------------------------------------
+  _onLayerDidResize: function _onLayerDidResize(resizeEvent) {
+      this._canvas.width = resizeEvent.newSize.x;
+      this._canvas.height = resizeEvent.newSize.y;
+    },
+  //-------------------------------------------------------------
+  _onLayerDidMove: function _onLayerDidMove() {
+      var topLeft = this._map.containerPointToLayerPoint([0, 0]);
+
+      L.DomUtil.setPosition(this._canvas, topLeft);
+      this.drawLayer();
+  },
+  //-------------------------------------------------------------
+  getEvents: function getEvents() {
+    var events = {
+      resize: this._onLayerDidResize,
+      moveend: this._onLayerDidMove
+    };
+
+    if (this._map.options.zoomAnimation && L.Browser.any3d) {
+      events.zoomanim = this._animateZoom;
+    }
+
+    return events;
+  },
+});
+
+L.myCanvasLayer = function (pane) {
+  return new L.MyCanvasLayer(pane);
+};
+
+L.MyVelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
+  options: {
+    displayValues: true,
+    displayOptions: {
+      velocityType: "Velocity",
+      position: "bottomleft",
+      emptyString: "No velocity data"
+    },
+    maxVelocity: 10,
+    // used to align color scale
+    colorScale: null,
+    data: null
+  },
+  _map: null,
+  _canvasLayer: null,
+  _windy: null,
+  _context: null,
+  _timer: 0,
+  animationLoop: null,
+  initialize: function initialize(options) {
+    L.setOptions(this, options);
+  },
+  onRemove: function onRemove(map) {
+    this._destroyWind();
+  },
+  onAdd: function onAdd(map) {
+    // determine where to add the layer
+    this._paneName = this.options.paneName || "overlayPane"; // fall back to overlayPane for leaflet < 1
+
+    var pane = map._panes.overlayPane;
+
+    if (map.getPane) {
+      // attempt to get pane first to preserve parent (createPane voids this)
+      pane = map.getPane(this._paneName);
+
+      if (!pane) {
+        pane = map.createPane(this._paneName);
+      }
+    } // create canvas, add to map pane
+
+
+    this._canvasLayer = L.myCanvasLayer({
+      pane: pane
+    }).delegate(this);
+
+    this._canvasLayer.addTo(map);
+
+    this._map = map;
+  },
+  
+  onDrawLayer: function onDrawLayer(overlay, params) {
+    var self = this;
+    if (!this._windy) {
+      this._initWindy(this);
+    }
+
+    self._startWindy();
+  },
+  _initWindy: function _initWindy(self) {
+    
+    var options = Object.assign({
+      canvas: self._canvasLayer._canvas,
+      map: this._map
+    }, self.options);
+    this._windy = new MyWindy(options); // prepare context global var, start drawing
+    this._context = this._canvasLayer._canvas.getContext("2d");
+
+    this._canvasLayer._canvas.classList.add("velocity-overlay");
+
+    this._map.on("dragend", self._clearAndRestart);
+
+    this._map.on("zoomstart", self._clearWind);
+
+    this._map.on("zoomend", self._clearAndRestart);
+
+    this._map.on("resize", self._clearWind);
+
+  },
+
+  _clearAndRestart: function _clearAndRestart() {
+    if (this._context) this._context.clearRect(0, 0, 3000, 3000);
+    if (this._windy) this._startWindy();
+  },
+  _clearWind: function _clearWind() {
+    if (this._windy) this._windy.stop();
+    if (this._context) this._context.clearRect(0, 0, 3000, 3000);
+  },
+  setOpacity: function setOpacity(opacity) {
+    this._canvasLayer.setOpacity(opacity);
+  },
+  _destroyWind: function _destroyWind() {
+    console.log('destroy windy');
+    if (this._timer) clearTimeout(this._timer);
+    if (this._windy) this._windy.stop();
+    if (this._context) this._context.clearRect(0, 0, 3000, 3000);
+    this._map.removeLayer(this._canvasLayer);
+  },
+  _startWindy: function _startWindy() {
+    
+    this._windy.start()
+  },
+  _stopWindy: function _stopWiny() {
+    console.log('stop windy');
+    if (windy.field) windy.field.release();
+    if (animationLoop) cancelAnimationFrame(animationLoop);
+  }
+});
+
+L.myVelocityLayer = function (options) {
+  return new L.MyVelocityLayer(options);
+};
+
+var MyWindy = function MyWindy(params) {
+  var MAX_PARTICLE_AGE = params.particleAge || 70; // max number of frames a particle is drawn before regeneration
+
+  var PARTICLE_LINE_WIDTH = params.lineWidth || 1.5; // line width of a drawn particle
+
+  var PARTICLE_MULTIPLIER = params.particleMultiplier || 0.05; 
+
+  var FRAME_RATE = params.frameRate || 25;
+  var FRAME_TIME = 1000 / FRAME_RATE; // desired frames per second
+
+  var OPACITY = 0.97;
+
+  var animationLoop;
+  
+  var drawCanvasTiles = function() {
+
+    var size = params.map.getSize();
+
+    var bounds = params.map.getBounds();
+
+    var zoom = params.map.getZoom();
+
+    var topLeft = params.map.project(bounds.getNorthWest(), zoom);
+    var bottomRight = params.map.project(bounds.getSouthEast(), zoom);
+    
     let MAX_ZOOM = 3
     
     if (zoom < 4) MAX_ZOOM = 1
@@ -93,8 +319,8 @@ L.MyCanvasLayer = (L.Layer ? L.Layer : L.Class).extend({
     leftOffset += topLeft.x - (startTileX * tileSize);
     topOffset += topLeft.y - (startTileY * tileSize);
     const canvas = document.createElement('canvas')
-    canvas.width = this._canvas.width;
-    canvas.height = this._canvas.height;
+    canvas.width = params.canvas.width;
+    canvas.height = params.canvas.height;
     const ctx = canvas.getContext('2d')
     ctx.clearRect(0, 0, 3000, 3000)
     ctx.globalAlpha = 0.85
@@ -158,269 +384,169 @@ L.MyCanvasLayer = (L.Layer ? L.Layer : L.Class).extend({
         }
       });
     }
+    return {promises, canvas}
+  }
+  var start = function start() {
+    console.log('start');
+    stop()
+    const {promises, canvas} = drawCanvasTiles()
     Promise.all(promises)
     .finally(() => {
-      var prev = "lighter";
-      const MAX_PARTICLE_AGE = this.MAX_PARTICLE_AGE
-      const WIND_MULTIPLIER = this.WIND_MULTIPLIER;
-      const particles = this.getWindDataFromCanvas(canvas);
-      const mainCanvas = this._canvas;
-      const mainCtx = this._canvas.getContext('2d')
-      mainCtx.globalCompositeOperation = "destination-in";
-      mainCtx.globalCompositeOperation = prev;
-      mainCtx.globalAlpha = this.OPACITY; // Draw new particle trails.
-      function drawParticle(particle) {
-         // Длина черточки, представляющей вектор ветра
-          const lineLength = 5;
+      const {rows, particles} = getWindDataFromCanvas(canvas)
+      animate(rows, particles)
+    });
+  };
+  var animate = function animate(rows, particles) {
+    function evolve() {
+      function wswd(x, y) {
+        let x1 = Math.round(x)
+        let y1 = Math.round(y)
 
-          // Вычисление конечных координат для черточки в направлении ветра
-          const endX = particle.xt + lineLength * Math.cos(-particle.wd);
-          const endY = particle.yt + lineLength * Math.sin(-particle.wd);
-
-          // Отрисовка черточки
-          mainCtx.beginPath();
-          mainCtx.moveTo(particle.xt, particle.yt);
-          mainCtx.lineTo(endX, endY);
-          mainCtx.strokeStyle = 'white';
-          mainCtx.lineWidth = particle.ws / 10; // Ширина линии черточки
-          mainCtx.stroke();
-      }
-      
-      function updateParticle(particle) {
-        particle.age++;
-
-        const windX = particle.ws * Math.cos(-particle.wd) * WIND_MULTIPLIER;
-        const windY = particle.ws * Math.sin(-particle.wd) * WIND_MULTIPLIER;
-
-        particle.xt += windX;
-        particle.yt += windY;
-
-        if (particle.age >= MAX_PARTICLE_AGE) {
-            particle.xt = particle.x;
-            particle.yt = particle.y;
-            particle.age = 0;
+        if(x1 > rows[0].length - 1 || x1 < 0 || y1 > rows.length - 1 || y1 < 0){
+          return null
         }
-    }
-      
-      function animateParticles() {
-        mainCtx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
-      
-        particles.forEach((particle, index) => {
-          updateParticle(particle);
-          drawParticle(particle);
-        });
-      
-        requestAnimationFrame(animateParticles);
+        return rows[y1][x1]
       }
+      const lineWidth = 1;
+      particles.forEach(function (particle) {
+        if (particle.age > MAX_PARTICLE_AGE) {
+          particle.x = particle.startX;
+          particle.y = particle.startY;
+          particle.age = 0;
+          particle.alpha = 1.0;
+        }
+
+        var x = particle.x;
+        var y = particle.y;
+
+        x = x < 0 ? 0 : x;
+        y = y < 0 ? 0 : y;
+
+        var v = wswd(x, y); // [wind_direction, wind_speed]
+        if (v === null) return;
+
+        const [wd, ws] = v;
+        let xt = x + ws * Math.cos(wd) * PARTICLE_MULTIPLIER;
+        let yt = y + ws * Math.sin(-wd) * PARTICLE_MULTIPLIER;
+        if (wswd(xt, yt) !== null) {
+          particle.xt = xt; 
+          particle.yt = yt;
+        }
+        else {
+          particle.x = xt;
+          particle.y = yt;
+        }
+        particle.age += 1;
+      });
+    }
+    
+    const fadeFillStyle = "rgba(0, 0, 0, ".concat(OPACITY, ")");
+    const mainCtx = params.canvas.getContext('2d');
+    mainCtx.fillStyle = fadeFillStyle;
+    mainCtx.globalAlpha = 0.6;
+    mainCtx.lineWidth = PARTICLE_LINE_WIDTH;
+    mainCtx.strokeStyle = 'white';
+
+    function draw() {
+      var prev = "lighter";
+        mainCtx.globalCompositeOperation = "destination-in";
+        mainCtx.fillRect(0, 0, params.canvas.width, params.canvas.height);
+        mainCtx.globalCompositeOperation = prev;
+        mainCtx.globalAlpha = OPACITY === 0 ? 0 : OPACITY * 0.9; // Draw new particle trails.
+        
+        mainCtx.beginPath();
+        particles.forEach((particle) => {
+            mainCtx.moveTo(particle.x, particle.y);
+            mainCtx.lineTo(particle.xt, particle.yt);
+            particle.x = particle.xt;
+            particle.y = particle.yt;
+        });
+        
+        mainCtx.stroke();
+    }
+
+    var then = Date.now();
+
+    (function frame() {
+      animationLoop = requestAnimationFrame(frame);
+      var now = Date.now();
+      var delta = now - then;
+
+      if (delta > FRAME_TIME) {
+        then = now - delta % FRAME_TIME;
+        evolve();
       
-      animateParticles();
-    });
-    var center = this._map.options.crs.project(this._map.getCenter());
-
-    var corner = this._map.options.crs.project(this._map.containerPointToLatLng(this._map.getSize()));
-
-    var del = this._delegate || this;
-    del.onDrawLayer && del.onDrawLayer({
-      layer: this,
-      canvas: this._canvas,
-      bounds: bounds,
-      size: size,
-      zoom: zoom,
-      center: center,
-      corner: corner
-    });
-    this._frame = null;
-  },
-  getWindDataFromCanvas: function (canvas) {
+        draw();
+      }
+    })();
+  };
+  var stop = function stop() {
+    console.log('stop');
+    params.canvas.getContext('2d').clearRect(0,0,3000,3000)
+    if (animationLoop) {
+      cancelAnimationFrame(animationLoop);
+    }
+  };
+  var getWindDataFromCanvas = function (canvas) {
     const ctx = canvas.getContext('2d');
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-    return this.decodeColorToParticles(imageData)
-  },
-  
-  decodeColorToParticles: function(imgData) {
+    return decodeColorToParticles(imageData)
+  }
+  var decodeColorToParticles = function(imgData) {
     const particles = []
     const data = imgData.data;
     const width = imgData.width;
-    const zoom = this._map.getZoom()
-    let step = 27;
-    for (let y = 0; y < imgData.height; y+=step) {
-        for (let x = 0; x < width; x+=step) {
+    const rows = []
+    for (let y = 0; y < imgData.height; y++) {
+        const row = []
+        for (let x = 0; x < width; x++) {
             const index = (y * width + x) * 4;
-
-            // const { u_data, v_data } = this.getWindDataFromPixel([
-            //     data[index],
-            //     data[index + 1],
-            //     data[index + 2]
-            // ]);
-            // const wind_speed = Math.sqrt(u_data**2, v_data**2);
-
-            // const wind_direction = Math.atan2(v_data, u_data);
-            // const age = Math.floor(Math.random() * MAX_PARTICLE_AGE)
-
-            const { wind_speed, wind_direction } = this.getWindDataFromPixel([
+            const { wind_speed, wind_direction } = getWindDataFromPixel([
                 data[index],
                 data[index + 1],
                 data[index + 2]
             ]);
-            particles.push({
-              age: Math.random() * this.MAX_PARTICLE_AGE,
-              x: x,
-              y: y,
-              ws: wind_speed,
-              wd: wind_direction,
-              xy: x,
-              yt: y
-            })
+            row.push([wind_direction, wind_speed])
+            let randomNumber = Math.floor(Math.random() * 10) + 11;
+            if(x % randomNumber === 0 && y % randomNumber === 0 && x < imgData.width && y < imgData.height){
+              particles.push({
+                age: Math.floor(Math.random() * MAX_PARTICLE_AGE),
+                x: x,
+                y: y,
+                ws: wind_speed,
+                wd: wind_direction,
+                xt: x,
+                yt: y,
+                startX: x,
+                startY: y,
+                alpha: 1.0
+              })
+            }
         }
+        rows.push(row)
     }
 
-    return particles;
-  },
-  getWindDataFromPixel: function(pixel) {
+    return {particles, rows};
+  }
+  var getWindDataFromPixel = function(pixel) {
       const [r, g, b] = pixel;
-      // let u_data = g * 35 / 255;
-      // let v_data = b * 35 / 255;
-      // const r_string = r.toString()
-      // if (parseInt(r_string[1], 10) === 0) {
-      //     u_data *= -1;
-      // }
-
-      // if (parseInt(r_string[2], 10) === 0) {
-      //     v_data *= -1;
-      // }
-
-      // return {v_data, u_data}
 
       const wind_speed = b * 50 / 255
       const wind_direction = g / 255 * 2 * Math.PI - Math.PI
 
       return {wind_speed, wind_direction}
-  },
-  
-  // -- L.DomUtil.setTransform from leaflet 1.0.0 to work on 0.0.7
-  //------------------------------------------------------------------------------
-  _setTransform: function _setTransform(el, offset, scale) {
-    var pos = offset || new L.Point(0, 0);
-    el.style[L.DomUtil.TRANSFORM] = (L.Browser.ie3d ? "translate(" + pos.x + "px," + pos.y + "px)" : "translate3d(" + pos.x + "px," + pos.y + "px,0)") + (scale ? " scale(" + scale + ")" : "");
-  },
-  //------------------------------------------------------------------------------
-  _animateZoom: function _animateZoom(e) {
-    var scale = this._map.getZoomScale(e.zoom); // -- different calc of offset in leaflet 1.0.0 and 0.0.7 thanks for 1.0.0-rc2 calc @jduggan1
-
-    var offset = L.Layer ? this._map._latLngToNewLayerPoint(this._map.getBounds().getNorthWest(), e.zoom, e.center) : this._map._getCenterOffset(e.center)._multiplyBy(-scale).subtract(this._map._getMapPanePos());
-    L.DomUtil.setTransform(this._canvas, offset, scale);
-  },
-    //-------------------------------------------------------------
-    _onLayerDidResize: function _onLayerDidResize(resizeEvent) {
-        this._canvas.width = resizeEvent.newSize.x;
-        this._canvas.height = resizeEvent.newSize.y;
-        },
-    //-------------------------------------------------------------
-    _onLayerDidMove: function _onLayerDidMove() {
-        var topLeft = this._map.containerPointToLayerPoint([0, 0]);
-
-        L.DomUtil.setPosition(this._canvas, topLeft);
-        this.drawLayer();
-    },
-    //-------------------------------------------------------------
-  getEvents: function getEvents() {
-    var events = {
-      resize: this._onLayerDidResize,
-      moveend: this._onLayerDidMove
-    };
-
-    if (this._map.options.zoomAnimation && L.Browser.any3d) {
-      events.zoomanim = this._animateZoom;
-    }
-
-    return events;
-  },
-  onDrawLayer: function onDrawLayer(overlay, params) {
-    var self = this;
-
-    // draw
-
-    self._startWindy();
-  },
-  _startWindy: function _startWindy() {
-    // start animation
-  },
-});
-
-L.myCanvasLayer = function (pane) {
-  return new L.MyCanvasLayer(pane);
-};
-
-L.MyVelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
-  options: {
-    displayValues: true,
-    displayOptions: {
-      velocityType: "Velocity",
-      position: "bottomleft",
-      emptyString: "No velocity data"
-    },
-    maxVelocity: 10,
-    // used to align color scale
-    colorScale: null,
-    data: null
-  },
-  _map: null,
-  _canvasLayer: null,
-  _windy: null,
-  _context: null,
-  _timer: 0,
-  _mouseControl: null,
-  initialize: function initialize(options) {
-    L.setOptions(this, options);
-  },
-  onRemove: function onRemove(map) {
-    this._destroyWind();
-  },
-  onAdd: function onAdd(map) {
-    // determine where to add the layer
-    this._paneName = this.options.paneName || "overlayPane"; // fall back to overlayPane for leaflet < 1
-
-    var pane = map._panes.overlayPane;
-
-    if (map.getPane) {
-      // attempt to get pane first to preserve parent (createPane voids this)
-      pane = map.getPane(this._paneName);
-
-      if (!pane) {
-        pane = map.createPane(this._paneName);
-      }
-    } // create canvas, add to map pane
-
-
-    this._canvasLayer = L.myCanvasLayer({
-      pane: pane
-    }).delegate(this);;
-
-    this._canvasLayer.addTo(map);
-
-    this._map = map;
-  },
-
-  
-  setData: function setData(data) {
-    
-  },
-  setOpacity: function setOpacity(opacity) {
-    this._canvasLayer.setOpacity(opacity);
-  },
-  setOptions: function setOptions(options) {
-    
-  },
-  _destroyWind: function _destroyWind() {
-    if (this._timer) clearTimeout(this._timer);
-    if (this._windy) this._windy.stop();
-    if (this._context) this._context.clearRect(0, 0, 3000, 3000);
-    if (this._mouseControl) this._map.removeControl(this._mouseControl);
-
-    this._map.removeLayer(this._canvasLayer);
   }
-});
+  var windy = {
+    params: params,
+    start: start,
+    stop: stop,
+  };
 
-L.myVelocityLayer = function (options) {
-  return new L.MyVelocityLayer(options);
+  return windy;
 };
+
+if (!window.cancelAnimationFrame) {
+  window.cancelAnimationFrame = function (id) {
+    clearTimeout(id);
+  };
+}
