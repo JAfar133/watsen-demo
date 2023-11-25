@@ -206,9 +206,10 @@ L.MyVelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
   onDrawLayer: function onDrawLayer(overlay, params) {
     var self = this;
     if (!this._windy) {
-      this._initWindy(this);
+      this._initWindy(self);
+      return
     }
-
+    if (this._timer) clearTimeout(self._timer);
     self._startWindy();
   },
   _initWindy: function _initWindy(self) {
@@ -216,9 +217,9 @@ L.MyVelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
       canvas: self._canvasLayer._canvas,
       map: this._map
     }, self.options);
-    this._windy = new MyWindy(options); // prepare context global var, start drawing
+    self._windy = new MyWindy(options); // prepare context global var, start drawing
     this._context = this._canvasLayer._canvas.getContext("2d");
-
+    this.onDrawLayer();
     this._canvasLayer._canvas.classList.add("velocity-overlay");
 
     this._map.on("dragend", self._clearAndRestart);
@@ -236,7 +237,9 @@ L.MyVelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
     if (this._windy) this._startWindy();
   },
   _clearWind: function _clearWind() {
+    
     if (this._windy) this._windy.stop();
+    if (this._timer) clearTimeout(this._timer);
     if (this._context) this._context.clearRect(0, 0, 3000, 3000);
   },
   setOpacity: function setOpacity(opacity) {
@@ -275,6 +278,9 @@ var MyWindy = function MyWindy(params) {
   var OPACITY = 0.97;
 
   var animationLoop;
+
+  var rows = [];
+  var particles = [];
   
   var drawCanvasTiles = function() {
 
@@ -289,9 +295,10 @@ var MyWindy = function MyWindy(params) {
     
     let MAX_ZOOM = 3
     
-    if (zoom < 4) MAX_ZOOM = 1
+    if(zoom < 2) MAX_ZOOM = 0
+    else if (zoom < 4) MAX_ZOOM = 1
     else if(zoom < 8) MAX_ZOOM = 2
-    else MAX_ZOOM = 3
+    else MAX_ZOOM = 2
 
     const tileSize = 256;
     const zoomFactor = 2**(zoom - MAX_ZOOM)
@@ -299,19 +306,13 @@ var MyWindy = function MyWindy(params) {
 
     let startTileX = Math.floor(topLeft.x / tileSize);
     let startTileY = Math.floor(topLeft.y / tileSize);
-    let endTileX = Math.ceil(bottomRight.x / tileSize) - 1;
-    let endTileY = Math.ceil(bottomRight.y / tileSize) - 1;
+    let endTileX = Math.ceil(bottomRight.x / tileSize);
+    let endTileY = Math.ceil(bottomRight.y / tileSize);
     let leftOffset = 0;
-    let topOffset = 0
-
-    if(zoom > MAX_ZOOM) {
-      startTileY = Math.round(startTileY / zoomFactor) * zoomFactor - zoomFactor;
-
-    }
-    if(zoom > MAX_ZOOM) {
-      startTileX = Math.round(startTileX / zoomFactor) * zoomFactor - zoomFactor ;
-    }
-
+    let topOffset = 0;
+    startTileY = Math.round(startTileY / zoomFactor) * zoomFactor - zoomFactor;
+    startTileX = Math.round(startTileX / zoomFactor) * zoomFactor - zoomFactor ;
+    
     leftOffset += topLeft.x - (startTileX * tileSize);
     topOffset += topLeft.y - (startTileY * tileSize);
     const tempCanvas = document.createElement('canvas')
@@ -320,7 +321,6 @@ var MyWindy = function MyWindy(params) {
     const tempCtx = tempCanvas.getContext('2d')
     tempCtx.clearRect(0, 0, 3000, 3000)
     tempCtx.globalAlpha = 0.85
-    // tempCtx.imageSmoothingEnabled = false
     let countX = 0;
     let countY = 0;
 
@@ -386,11 +386,16 @@ var MyWindy = function MyWindy(params) {
   var start = function start() {
     stop()
     const {promises, tempCanvas} = drawCanvasTiles()
+    
     Promise.all(promises)
     .finally(() => {
-      const {rows, particles} = getWindDataFromCanvas(tempCanvas)
+      stop()
+      const data = getWindDataFromCanvas(tempCanvas)
+      particles = data.particles;
+      rows = data.rows;
       animate(rows, particles, tempCanvas)
     });
+    
   };
   var animate = function animate(rows, particles, tempCanvas) {
     function direction_speed(x, y) {
@@ -486,10 +491,10 @@ var MyWindy = function MyWindy(params) {
     })();
   };
   var stop = function stop() {
+    particles = []
+    rows = []
     params.canvas.getContext('2d').clearRect(0,0,3000,3000)
-    if (animationLoop) {
-      cancelAnimationFrame(animationLoop);
-    }
+    cancelAnimationFrame(animationLoop);
   };
   var getWindDataFromCanvas = function (canvas) {
     const ctx = canvas.getContext('2d');

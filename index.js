@@ -89,34 +89,34 @@ function createLayers(step, defaultLayer, isAddWind, data_source) {
     });
     
     setTimeout(()=>{
-        $.getJSON(`./tiles/wind_test/wind-test.json`, function (data) {
-            velocityLayer = L.velocityLayer({
-                displayValues: true,
-                displayOptions: {
-                    velocityType: "",
-                    position: "bottomleft",
-                    emptyString: "No wind data",
-                    showCardinal: true,
-                },
-                data: data,
-                opacity: 0.8,
-                velocityScale: 0.0025,
-                colorScale: ['#ffffff', '#F6F6F6', '#EDEDED'],
-                particleMultiplier: 1/320
+        // $.getJSON(`./tiles/wind_test/wind-test.json`, function (data) {
+        //     velocityLayer = L.velocityLayer({
+        //         displayValues: true,
+        //         displayOptions: {
+        //             velocityType: "",
+        //             position: "bottomleft",
+        //             emptyString: "No wind data",
+        //             showCardinal: true,
+        //         },
+        //         data: data,
+        //         opacity: 0.8,
+        //         velocityScale: 0.0025,
+        //         colorScale: ['#ffffff', '#F6F6F6', '#EDEDED'],
+        //         particleMultiplier: 1/320
                 
-            });
-            isAddWind && velocityLayer.addTo(map);
+        //     });
+        //     isAddWind && velocityLayer.addTo(map);
             const canvasLayer = L.myVelocityLayer({}).addTo(map);
             const layers = { 
                 "Кастомная анимация": canvasLayer, 
-                "Velocity анимация": velocityLayer 
+                // "Velocity анимация": velocityLayer 
             };
         
             layerControl = L.control.layers(baseLayers, layers, { collapsed: false }).addTo(map);
             const windCheckbox = $(layerControl._overlaysList).find('input[type="checkbox"]');
             windCheckbox.siblings('span:contains("Кастомная анимация")').addClass('active');
             $('.leaflet-control-layers-base input:checked').siblings('span').text(defaultLayer).addClass('active');
-        });
+        // });
         
     }, 0)
     

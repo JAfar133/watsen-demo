@@ -15,7 +15,8 @@ L.TileLayer.Canvas = L.TileLayer.extend({
 
         const img = new Image();
         const tileZoom = this._getZoomForUrl();
-        if (tileZoom < 4) MAX_ZOOM = 1
+        if(tileZoom < 2) MAX_ZOOM = 0
+        else if (tileZoom < 4) MAX_ZOOM = 1
         else if(tileZoom < 8) MAX_ZOOM = 2
         else MAX_ZOOM = 2
         img.onload = () => {
@@ -96,31 +97,30 @@ L.TileLayer.Canvas = L.TileLayer.extend({
 
         if(tileZoom <= MAX_ZOOM) {
             tileCtx.drawImage(imageCanvas, 0, 0);
-            tile.complete = true;
-            done(null, tile);
-            return;
         }
-
-        const {x, y, z} = coords;
-        const scaledCoords = {
-            x: x >> (tileZoom - MAX_ZOOM),
-            y: y >> (tileZoom - MAX_ZOOM),
-            z: MAX_ZOOM,
-        };
-        const imageWidth = tile.width / 2 ** (tileZoom - scaledCoords.z);
-        const imageHeight = tile.height / 2 ** (tileZoom - scaledCoords.z);
-        const imageX = (coords.x - scaledCoords.x * 2 ** (tileZoom - scaledCoords.z)) * imageWidth
-        const imageY = (coords.y - scaledCoords.y * 2 ** (tileZoom - scaledCoords.z)) * imageHeight
-        tileCtx.drawImage(
-            imageCanvas,
-            imageX,
-            imageY,
-            imageWidth,
-            imageHeight,
-            0,
-            0,
-            tile.width,
-            tile.height);
+        else {
+            const {x, y, z} = coords;
+            const scaledCoords = {
+                x: x >> (tileZoom - MAX_ZOOM),
+                y: y >> (tileZoom - MAX_ZOOM),
+                z: MAX_ZOOM,
+            };
+            const imageWidth = tile.width / 2 ** (tileZoom - scaledCoords.z);
+            const imageHeight = tile.height / 2 ** (tileZoom - scaledCoords.z);
+            const imageX = (coords.x - scaledCoords.x * 2 ** (tileZoom - scaledCoords.z)) * imageWidth
+            const imageY = (coords.y - scaledCoords.y * 2 ** (tileZoom - scaledCoords.z)) * imageHeight
+            tileCtx.drawImage(
+                imageCanvas,
+                imageX,
+                imageY,
+                imageWidth,
+                imageHeight,
+                0,
+                0,
+                tile.width,
+                tile.height);
+        }
+        
         if(this.options.data === "wind") {
             const imgData = tileCtx.getImageData(0,0,tile.width,tile.height)
             this.fillTile(imgData)
