@@ -340,6 +340,7 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
     L.setOptions(this, options);
   },
   onAdd: function onAdd(map) {
+    console.log('add');
     // determine where to add the layer
     this._paneName = this.options.paneName || "overlayPane"; // fall back to overlayPane for leaflet < 1
 
@@ -766,7 +767,6 @@ var Windy = function Windy(params) {
      * @returns {Array} wind vector [u, v, magnitude] at the point (x, y), or [NaN, NaN, null] if wind
      *          is undefined at that point.
      */
-    console.log(columns);
     function field(x, y) {
       var column = columns[Math.round(x)];
       return column && column[Math.round(y)] || NULL_WIND_VECTOR;

@@ -182,7 +182,6 @@ L.MyVelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
   onAdd: function onAdd(map) {
     // determine where to add the layer
     this._paneName = this.options.paneName || "overlayPane"; // fall back to overlayPane for leaflet < 1
-
     var pane = map._panes.overlayPane;
 
     if (map.getPane) {
@@ -213,7 +212,6 @@ L.MyVelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
     self._startWindy();
   },
   _initWindy: function _initWindy(self) {
-    
     var options = Object.assign({
       canvas: self._canvasLayer._canvas,
       map: this._map
@@ -245,18 +243,16 @@ L.MyVelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
     this._canvasLayer.setOpacity(opacity);
   },
   _destroyWind: function _destroyWind() {
-    console.log('destroy windy');
     if (this._timer) clearTimeout(this._timer);
     if (this._windy) this._windy.stop();
     if (this._context) this._context.clearRect(0, 0, 3000, 3000);
+    this._windy = null;
     this._map.removeLayer(this._canvasLayer);
   },
   _startWindy: function _startWindy() {
-    
     this._windy.start()
   },
   _stopWindy: function _stopWiny() {
-    console.log('stop windy');
     if (windy.field) windy.field.release();
     if (animationLoop) cancelAnimationFrame(animationLoop);
   }
@@ -267,11 +263,11 @@ L.myVelocityLayer = function (options) {
 };
 
 var MyWindy = function MyWindy(params) {
-  var MAX_PARTICLE_AGE = params.particleAge || 70; // max number of frames a particle is drawn before regeneration
+  var MAX_PARTICLE_AGE = params.particleAge || 90; // max number of frames a particle is drawn before regeneration
 
   var PARTICLE_LINE_WIDTH = params.lineWidth || 1.5; // line width of a drawn particle
 
-  var PARTICLE_MULTIPLIER = params.particleMultiplier || 0.05; 
+  var PARTICLE_MULTIPLIER = params.particleMultiplier || 0.08; 
 
   var FRAME_RATE = params.frameRate || 25;
   var FRAME_TIME = 1000 / FRAME_RATE; // desired frames per second
@@ -318,12 +314,13 @@ var MyWindy = function MyWindy(params) {
 
     leftOffset += topLeft.x - (startTileX * tileSize);
     topOffset += topLeft.y - (startTileY * tileSize);
-    const canvas = document.createElement('canvas')
-    canvas.width = params.canvas.width;
-    canvas.height = params.canvas.height;
-    const ctx = canvas.getContext('2d')
-    ctx.clearRect(0, 0, 3000, 3000)
-    ctx.globalAlpha = 0.85
+    const tempCanvas = document.createElement('canvas')
+    tempCanvas.width = params.canvas.width;
+    tempCanvas.height = params.canvas.height;
+    const tempCtx = tempCanvas.getContext('2d')
+    tempCtx.clearRect(0, 0, 3000, 3000)
+    tempCtx.globalAlpha = 0.85
+    // tempCtx.imageSmoothingEnabled = false
     let countX = 0;
     let countY = 0;
 
@@ -373,7 +370,7 @@ var MyWindy = function MyWindy(params) {
           img.onload = () => {
             const tileX = countX * size - offsetLeft;
             const tileY = countY * size - offsetTop;
-            ctx.drawImage(img, 0, 0, img.width, img.height, tileX, tileY, size, size);
+            tempCtx.drawImage(img, 0, 0, img.width, img.height, tileX, tileY, size, size);
             resolve();
           };
           img.onerror = (error) => {
@@ -384,36 +381,45 @@ var MyWindy = function MyWindy(params) {
         }
       });
     }
-    return {promises, canvas}
+    return {promises, tempCanvas}
   }
   var start = function start() {
-    console.log('start');
     stop()
-    const {promises, canvas} = drawCanvasTiles()
+    const {promises, tempCanvas} = drawCanvasTiles()
     Promise.all(promises)
     .finally(() => {
-      const {rows, particles} = getWindDataFromCanvas(canvas)
-      animate(rows, particles)
+      const {rows, particles} = getWindDataFromCanvas(tempCanvas)
+      animate(rows, particles, tempCanvas)
     });
   };
-  var animate = function animate(rows, particles) {
-    function evolve() {
-      function wswd(x, y) {
-        let x1 = Math.round(x)
-        let y1 = Math.round(y)
+  var animate = function animate(rows, particles, tempCanvas) {
+    function direction_speed(x, y) {
+      let x1 = Math.round(x)
+      let y1 = Math.round(y)
 
-        if(x1 > rows[0].length - 1 || x1 < 0 || y1 > rows.length - 1 || y1 < 0){
-          return null
-        }
-        return rows[y1][x1]
+      if(x1 > rows[0].length - 1 || x1 < 0 || y1 > rows.length - 1 || y1 < 0){
+        return null
       }
-      const lineWidth = 1;
+      return rows[y1][x1]
+    }
+    var randomize = function (o) {
+      // UNDONE: this method is terrible
+      var x, y;
+      var safetyNet = 0;
+
+      do {
+        x = o.startX + Math.round(Math.random() * 10 - 5);
+        y = o.startY + Math.round(Math.random() * 10 - 5);
+      } while (direction_speed(x,y) === null && safetyNet++ < 30);
+
+      o.x = x;
+      o.y = y;
+      return o;
+    }
+    function evolve() {
       particles.forEach(function (particle) {
         if (particle.age > MAX_PARTICLE_AGE) {
-          particle.x = particle.startX;
-          particle.y = particle.startY;
-          particle.age = 0;
-          particle.alpha = 1.0;
+          randomize(particle).age = 0
         }
 
         var x = particle.x;
@@ -422,19 +428,18 @@ var MyWindy = function MyWindy(params) {
         x = x < 0 ? 0 : x;
         y = y < 0 ? 0 : y;
 
-        var v = wswd(x, y); // [wind_direction, wind_speed]
+        var v = direction_speed(x, y); // [wind_direction, wind_speed]
         if (v === null) return;
 
         const [wd, ws] = v;
         let xt = x + ws * Math.cos(wd) * PARTICLE_MULTIPLIER;
         let yt = y + ws * Math.sin(-wd) * PARTICLE_MULTIPLIER;
-        if (wswd(xt, yt) !== null) {
+        if (direction_speed(xt, yt) !== null) {
           particle.xt = xt; 
           particle.yt = yt;
         }
         else {
-          particle.x = xt;
-          particle.y = yt;
+          particle.age = MAX_PARTICLE_AGE;
         }
         particle.age += 1;
       });
@@ -443,26 +448,24 @@ var MyWindy = function MyWindy(params) {
     const fadeFillStyle = "rgba(0, 0, 0, ".concat(OPACITY, ")");
     const mainCtx = params.canvas.getContext('2d');
     mainCtx.fillStyle = fadeFillStyle;
-    mainCtx.globalAlpha = 0.6;
     mainCtx.lineWidth = PARTICLE_LINE_WIDTH;
-    mainCtx.strokeStyle = 'white';
+    mainCtx.strokeStyle = 'rgb(222,222,222)';
 
     function draw() {
       var prev = "lighter";
-        mainCtx.globalCompositeOperation = "destination-in";
-        mainCtx.fillRect(0, 0, params.canvas.width, params.canvas.height);
-        mainCtx.globalCompositeOperation = prev;
-        mainCtx.globalAlpha = OPACITY === 0 ? 0 : OPACITY * 0.9; // Draw new particle trails.
-        
-        mainCtx.beginPath();
-        particles.forEach((particle) => {
-            mainCtx.moveTo(particle.x, particle.y);
-            mainCtx.lineTo(particle.xt, particle.yt);
-            particle.x = particle.xt;
-            particle.y = particle.yt;
-        });
-        
-        mainCtx.stroke();
+      mainCtx.globalCompositeOperation = "destination-in";
+      mainCtx.fillRect(0, 0, params.canvas.width, params.canvas.height);
+      mainCtx.globalCompositeOperation = prev;
+      mainCtx.globalAlpha = OPACITY === 0 ? 0 : OPACITY*0.9; // Draw new particle trails.
+      
+      mainCtx.beginPath();
+      particles.forEach((particle) => {
+          mainCtx.moveTo(particle.x, particle.y);
+          mainCtx.lineTo(particle.xt, particle.yt);
+          particle.x = particle.xt;
+          particle.y = particle.yt;
+      });
+      mainCtx.stroke();
     }
 
     var then = Date.now();
@@ -475,13 +478,14 @@ var MyWindy = function MyWindy(params) {
       if (delta > FRAME_TIME) {
         then = now - delta % FRAME_TIME;
         evolve();
-      
         draw();
+        // mainCtx.globalAlpha = 0.5
+        // mainCtx.drawImage(tempCanvas,0,0)
+        
       }
     })();
   };
   var stop = function stop() {
-    console.log('stop');
     params.canvas.getContext('2d').clearRect(0,0,3000,3000)
     if (animationLoop) {
       cancelAnimationFrame(animationLoop);
@@ -507,19 +511,16 @@ var MyWindy = function MyWindy(params) {
                 data[index + 2]
             ]);
             row.push([wind_direction, wind_speed])
-            let randomNumber = Math.floor(Math.random() * 10) + 11;
-            if(x % randomNumber === 0 && y % randomNumber === 0 && x < imgData.width && y < imgData.height){
+            let randomStep = Math.round(Math.random() * 8) + 11;
+            if(x % randomStep === 0 && y % randomStep === 0 && x < imgData.width && y < imgData.height){
               particles.push({
                 age: Math.floor(Math.random() * MAX_PARTICLE_AGE),
                 x: x,
                 y: y,
-                ws: wind_speed,
-                wd: wind_direction,
                 xt: x,
                 yt: y,
                 startX: x,
-                startY: y,
-                alpha: 1.0
+                startY: y
               })
             }
         }
@@ -531,8 +532,11 @@ var MyWindy = function MyWindy(params) {
   var getWindDataFromPixel = function(pixel) {
       const [r, g, b] = pixel;
 
-      const wind_speed = b * 50 / 255
-      const wind_direction = g / 255 * 2 * Math.PI - Math.PI
+      let wind_speed = b * 50 / 255
+      let wind_direction = g / 255 * Math.PI
+      if (r < 65) {
+        wind_direction *= -1
+      }
 
       return {wind_speed, wind_direction}
   }

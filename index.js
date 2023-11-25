@@ -24,7 +24,9 @@ var map = L.map('map', {
     worldCopyJump: false
 });
 currentLayer.addTo(map);
-
+map.on('load', ()=>{
+    map.setView([44.8, 34],7)
+})
 // Title
 var title = L.control();
 title.onAdd = function (map) {
@@ -85,17 +87,40 @@ function createLayers(step, defaultLayer, isAddWind, data_source) {
             addLayerToMap(layer);
         }
     });
+    
     setTimeout(()=>{
-        const canvasLayer = L.myVelocityLayer({}).addTo(map);
-        const layers = { "Кастомная анимация": canvasLayer };
+        $.getJSON(`./tiles/wind_test/wind-test.json`, function (data) {
+            velocityLayer = L.velocityLayer({
+                displayValues: true,
+                displayOptions: {
+                    velocityType: "",
+                    position: "bottomleft",
+                    emptyString: "No wind data",
+                    showCardinal: true,
+                },
+                data: data,
+                opacity: 0.8,
+                velocityScale: 0.0025,
+                colorScale: ['#ffffff', '#F6F6F6', '#EDEDED'],
+                particleMultiplier: 1/320
+                
+            });
+            isAddWind && velocityLayer.addTo(map);
+            const canvasLayer = L.myVelocityLayer({}).addTo(map);
+            const layers = { 
+                "Кастомная анимация": canvasLayer, 
+                "Velocity анимация": velocityLayer 
+            };
+        
+            layerControl = L.control.layers(baseLayers, layers, { collapsed: false }).addTo(map);
+            const windCheckbox = $(layerControl._overlaysList).find('input[type="checkbox"]');
+            windCheckbox.siblings('span:contains("Кастомная анимация")').addClass('active');
+            $('.leaflet-control-layers-base input:checked').siblings('span').text(defaultLayer).addClass('active');
+        });
+        
+    }, 0)
     
-        layerControl = L.control.layers(baseLayers, layers, { collapsed: false }).addTo(map);
-        console.log(layerControl._overlaysList);
-        const windCheckbox = $(layerControl._overlaysList).find('input[type="checkbox"]');
-        windCheckbox.siblings('span:contains("Кастомная анимация")').addClass('active');
-        $('.leaflet-control-layers-base input:checked').siblings('span').text(defaultLayer).addClass('active');
-    }, 200)
-    
+
         
 }
 
@@ -112,6 +137,7 @@ map.fitBounds([[-85.05112877980659, 180.0], [85.0511287798066, -180.0]]);
 
 // Overlay layers (TMS)
 let currentLayerName;
+
 map.on('baselayerchange', function (e) {
     addGradientInfo(e.layer.options.data);
 });
