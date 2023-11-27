@@ -17,8 +17,8 @@ L.TileLayer.Canvas = L.TileLayer.extend({
         const tileZoom = this._getZoomForUrl();
         if(tileZoom < 2) MAX_ZOOM = 0
         else if (tileZoom < 4) MAX_ZOOM = 1
-        else if(tileZoom < 8) MAX_ZOOM = 1
-        else MAX_ZOOM = 1
+        else if(tileZoom < 8) MAX_ZOOM = 2
+        else MAX_ZOOM = 2
         img.onload = () => {
             tile.width = img.width;
             tile.height = img.height;
@@ -113,8 +113,8 @@ L.TileLayer.Canvas = L.TileLayer.extend({
             const imageY = (coords.y - scaledCoords.y * 2 ** (zoom - scaledCoords.z)) * imageHeight
             tileCtx.drawImage(
                 imageCanvas,
-                imageX,
-                imageY,
+                imageX-1,
+                imageY-1,
                 imageWidth,
                 imageHeight,
                 0,
