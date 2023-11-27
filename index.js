@@ -42,6 +42,7 @@ title.addTo(map);
 let layerControl;
 let velocityLayer;
 let baseLayers;
+let windyLayer;
 function addLayerToMap(layer) {
     layer.addTo(map);
     addGradientInfo(layer.options.data);
@@ -49,16 +50,16 @@ function addLayerToMap(layer) {
 
 function createBaseLayers(step, data_source) {
     return {
-        "Ветер": createLayer(`../tiles/wind_test/{z}/{x}/{y}.png`, 'Ветер', 'wind'),
-        "Накопление осадков": createLayer(`../tiles/${data_source}/${step}/tp/{z}/{x}/{y}.png`, 'Накопление осадков', 'precipitation'),
-        "Температура": createLayer(`../tiles/${data_source}/${step}/st/{z}/{x}/{y}.png`, 'Температура', 'temperature'),
-        "Давление": createLayer(`../tiles/${data_source}/${step}/sp/{z}/{x}/{y}.png`, 'Давление', 'pressure', 20),
-        "Влажность 1000 гПа": createLayer(`../tiles/${data_source}/${step}/r/{z}/{x}/{y}.png`, 'Влажность 1000 гПа', 'humidity'),
+        "Ветер": createLayer(`../tiles/${data_source}/${step}/wind/{z}/{x}/{y}.png`, 'Ветер', 'wind', step),
+        "Накопление осадков": createLayer(`../tiles/${data_source}/${step}/tp/{z}/{x}/{y}.png`, 'Накопление осадков', 'precipitation', step),
+        "Температура": createLayer(`../tiles/${data_source}/${step}/st/{z}/{x}/{y}.png`, 'Температура', 'temperature', step),
+        "Давление": createLayer(`../tiles/${data_source}/${step}/sp/{z}/{x}/{y}.png`, 'Давление', 'pressure', step, 20),
+        "Влажность 1000 гПа": createLayer(`../tiles/${data_source}/${step}/r/{z}/{x}/{y}.png`, 'Влажность 1000 гПа', 'humidity', step),
         "OSM": osm
     };
 }
 
-function createLayer(url, name, data, gradientLevel = 11) {
+function createLayer(url, name, data, step, gradientLevel = 11) {
     return L.tileLayer.canvas(url, {
         tms: 1,
         attribution: "",
@@ -66,7 +67,8 @@ function createLayer(url, name, data, gradientLevel = 11) {
         maxZoom: 11,
         name: name,
         data: data,
-        gradientLevel: gradientLevel
+        step: step,
+        gradientLevel: gradientLevel,
     });
 }
 
@@ -106,15 +108,17 @@ function createLayers(step, defaultLayer, isAddWind, data_source) {
                 
         //     });
         //     isAddWind && velocityLayer.addTo(map);
-            const canvasLayer = L.myVelocityLayer({}).addTo(map);
+            windyLayer = L.myVelocityLayer({
+                url: `../tiles/${data_source}/${step}/wind/{z}/{x}/{y}.png`
+            }).addTo(map);
             const layers = { 
-                "Кастомная анимация": canvasLayer, 
+                "Направление ветра": windyLayer, 
                 // "Velocity анимация": velocityLayer 
             };
         
             layerControl = L.control.layers(baseLayers, layers, { collapsed: false }).addTo(map);
             const windCheckbox = $(layerControl._overlaysList).find('input[type="checkbox"]');
-            windCheckbox.siblings('span:contains("Кастомная анимация")').addClass('active');
+            windCheckbox.siblings(`span:contains("${Object.keys(layers)[0]}")`).addClass('active');
             $('.leaflet-control-layers-base input:checked').siblings('span').text(defaultLayer).addClass('active');
         // });
         
@@ -124,13 +128,13 @@ function createLayers(step, defaultLayer, isAddWind, data_source) {
         
 }
 
-const startStep = '42h';
+const startStep = '18h';
 const startLayer = 'Ветер';
-let data_source = 'ecmwf'
+let data_source = 'gfs'
 let currentStep = Number(startStep.replace(/\D/g, ''));
-let start_day = 18;
+let start_day = 27;
 let start_hour = 0;
-let start_month = 'Янв';
+let start_month = 'Ноя';
 createLayers(startStep, startLayer, false, data_source);
 step_control_fill(start_day, start_hour, start_month)
 map.fitBounds([[-85.05112877980659, 180.0], [85.0511287798066, -180.0]]);
@@ -153,15 +157,6 @@ map.on('overlayremove', function (e) {
 map.on('layeradd', function (e) {
     $('.leaflet-control-layers-base span').removeClass('active');
     $('.leaflet-control-layers-base input:checked').siblings('span').text(e.layer.options.name).addClass('active');
-    
-    if(e.layer._url === osm._url && map.hasLayer(velocityLayer)){
-        // updateVelocityLayer(velocityLayer._windy.defaulColorScale, velocityLayer.options.particleMultiplier)
-        // velocityLayer._startWindy()
-    }
-    else if(e.layer._url !== osm._url && currentLayerName === undefined && map.hasLayer(velocityLayer)){
-        // updateVelocityLayer(velocityLayer.options.colorScale, velocityLayer.options.particleMultiplier)
-        // velocityLayer._startWindy()
-    }
     currentLayerName = e.layer.options.name
 });
 
@@ -301,7 +296,7 @@ $('#model-control').on('change',(e)=>{
     let startHour;
     let month;
     if(model === 'gfs'){
-        startDay = 14;
+        startDay = 27;
         startHour = 0;
         month = 'Ноя'
     }
@@ -323,14 +318,9 @@ function updateLayers(selectedStep, model) {
         const newUrl = layer._url.replace(/\d+h/g, selectedStep).replace(data_source, model);
         layer.setUrl(newUrl);
     });
-    $.getJSON(`./tiles/${model}/${selectedStep}/oper-${selectedStep}-${model}-wind.json`, function (data) {
-        velocityLayer.setData(data)
-        const windChecked = $('.leaflet-control-layers-overlays input:checkbox').prop('checked');
-        if(windChecked) {
-            velocityLayer._windy.stop()
-            velocityLayer._startWindy()
-        }
-    });
+    const newWindURL = windyLayer.options.url.replace(/\d+h/g, selectedStep).replace(data_source, model)
+    windyLayer._windy.setUrl(newWindURL);
+   
 }
 
 function addGradientInfo(data) {

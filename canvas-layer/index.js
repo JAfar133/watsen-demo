@@ -82,13 +82,14 @@ L.TileLayer.Canvas = L.TileLayer.extend({
             const red = data[i];
             const green = data[i + 1];
             const blue = data[i + 2];
-            const w_speed = this.getWindSpeedFromPixel([red, green, blue])
+            const value = this.getValueFromPixel([red, green, blue])
+            if (value !== null) {
+                const color = this.interpolateColor(value, this.getGradient())
+                data[i] = color[0]
+                data[i+1] = color[1]
+                data[i+2] = color[2]
+            }
             
-            const color = this.interpolateColor(w_speed, this.getGradient())
-            data[i] = color[0] || 100
-            data[i+1] = color[1] || 100
-            data[i+2] = color[2] || 100
-
         }
     },
     drawTile(imageCanvas, coords, tile, done) {
@@ -120,28 +121,30 @@ L.TileLayer.Canvas = L.TileLayer.extend({
                 tile.width,
                 tile.height);
         }
-        
-        if(this.options.data === "wind") {
-            const imgData = tileCtx.getImageData(0,0,tile.width,tile.height)
-            this.fillTile(imgData)
-            tileCtx.putImageData(imgData, 0, 0)
+        if(this.options.data === "precipitation" && this._url.split('/')[3] === '0h') {
+            tile.complete = true;
+            done(null, tile);
+            return;
         }
+        const imgData = tileCtx.getImageData(0,0,tile.width,tile.height)
+        this.fillTile(imgData)
+        tileCtx.putImageData(imgData, 0, 0)
         
         tile.complete = true;
         done(null, tile);
     },
-    interpolateColor: function(w_speed, gradient) {
+    interpolateColor: function(value, gradient) {
         let lowerIndex = 0;
         let upperIndex = gradient.length - 1;
-        if(w_speed < 1) {
-            return gradient[0].data;
+        if (value === gradient[0].value) {
+            return gradient[0].data
         }
         for (let i = 0; i < gradient.length; i++) {
-            if (w_speed === gradient[i].value) {
+            if (value === gradient[i].value) {
                 lowerIndex = i;
                 upperIndex = i;
                 break;
-            } else if (w_speed < gradient[i].value) {
+            } else if (value < gradient[i].value) {
                 upperIndex = i;
                 break;
             } else {
@@ -157,27 +160,38 @@ L.TileLayer.Canvas = L.TileLayer.extend({
         const lowerValue = gradient[lowerIndex].value;
         const upperValue = gradient[upperIndex].value;
     
-        const powerFactor = 1;
+        const fraction = (value - lowerValue) / (upperValue - lowerValue);
 
-        const fraction = (w_speed - lowerValue) / (upperValue - lowerValue);
-        
         const interpolatedColor = [
-            Math.round(gradient[lowerIndex].data[0] + fraction * (gradient[upperIndex].data[0] - gradient[lowerIndex].data[0])),
-            Math.round(gradient[lowerIndex].data[1] + fraction * (gradient[upperIndex].data[1] - gradient[lowerIndex].data[1])),
-            Math.round(gradient[lowerIndex].data[2] + fraction * (gradient[upperIndex].data[2] - gradient[lowerIndex].data[2])),
+            Math.max(0, Math.round(gradient[lowerIndex].data[0] + fraction * (gradient[upperIndex].data[0] - gradient[lowerIndex].data[0]))),
+            Math.max(0, Math.round(gradient[lowerIndex].data[1] + fraction * (gradient[upperIndex].data[1] - gradient[lowerIndex].data[1]))),
+            Math.max(0, Math.round(gradient[lowerIndex].data[2] + fraction * (gradient[upperIndex].data[2] - gradient[lowerIndex].data[2]))),
         ];
-
+        if (interpolatedColor[0] < 0 || interpolatedColor[1] < 0 || interpolatedColor[2] < 0) {
+            console.log(interpolatedColor);
+        }
         return interpolatedColor;
     },
 
-    getWindSpeedFromPixel: function(pixel) {
+    getValueFromPixel: function(pixel) {
         const [r, g, b] = pixel;
-        // let u_data = g * 35 / 255;
-        // let v_data = b * 35 / 255;
-        // return Math.sqrt(Math.pow(u_data, 2) + Math.pow(v_data, 2))
-
-        const wind_speed = b * 50 / 255
-        return wind_speed
+        let data = null;
+        if(this.options.data === "wind") {
+            data = b * 40 / 255
+        }
+        else if (this.options.data === "temperature") {
+            data = r * 120 / 255 + 200
+        }
+        else if (this.options.data === "precipitation") {
+            data = r * 500 / 255
+        }
+        else if (this.options.data === "humidity") {
+            data = r * 100 / 255
+        }
+        else if (this.options.data === "pressure") {
+            data = r * 150 / 255 + 900
+        }
+        return data
     },
     createTile: function (coords, done) {
         const {timeout} = this.options;

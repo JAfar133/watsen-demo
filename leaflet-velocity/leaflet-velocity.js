@@ -439,7 +439,7 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
     this._canvasLayer._canvas.classList.add("velocity-overlay");
     this.onDrawLayer();
 
-    // this._map.on("dragstart", self._windy.stop);
+    this._map.on("dragstart", self._windy.stop);
 
     this._map.on("dragend", self._clearAndRestart);
 
@@ -995,7 +995,7 @@ var Windy = function Windy(params) {
       width: width,
       height: height
     };
-    // stop(); // build grid
+    stop(); // build grid
     buildGrid(gridData, function (grid) {
       // interpolateField
       interpolateField(grid, buildBounds(bounds, width, height), mapBounds, function (bounds, field) {

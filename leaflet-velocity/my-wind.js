@@ -90,7 +90,6 @@ L.MyCanvasLayer = (L.Layer ? L.Layer : L.Class).extend({
     var bounds = this._map.getBounds();
 
     var zoom = this._map.getZoom();
-
     
     var center = this._map.options.crs.project(this._map.getCenter());
 
@@ -173,8 +172,14 @@ L.MyVelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
   _context: null,
   _timer: 0,
   animationLoop: null,
+  url: '../tiles/gfs/0h/wind/{z}/{x}/{y}.png',
   initialize: function initialize(options) {
     L.setOptions(this, options);
+  },
+  setOptions: function setOptions(options) {
+    this.options = Object.assign(this.options, options);
+
+    this.fire("load");
   },
   onRemove: function onRemove(map) {
     this._destroyWind();
@@ -270,21 +275,94 @@ var MyWindy = function MyWindy(params) {
 
   var PARTICLE_LINE_WIDTH = params.lineWidth || 1.5; // line width of a drawn particle
 
-  var PARTICLE_MULTIPLIER = params.particleMultiplier || 0.08; 
+  var PARTICLE_MULTIPLIER = params.particleMultiplier || 0.16; 
 
   var FRAME_RATE = params.frameRate || 25;
   var FRAME_TIME = 1000 / FRAME_RATE; // desired frames per second
 
   var OPACITY = 0.97;
-
+  var url = params.url || '';
   var animationLoop;
+  var setUrl = function(newUrl){
+    url = newUrl
+    params.url = newUrl
+    start()
+  }
+  var getWindDataFromCanvas = function (canvas) {
+    const ctx = canvas.getContext('2d');
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    return buildGridParticles(imageData)
+  }
+  var buildGridParticles = function(imgData) {
+    const particles = []
+    const data = imgData.data;
+    const width = imgData.width;
+    let grid = []
+    for (let y = 0; y < imgData.height; y++) {
+        const row = []
+        for (let x = 0; x < width; x++) {
+            const index = (y * width + x) * 4;
+            const { wind_speed, wind_direction } = getWindDataFromPixel([
+                data[index],
+                data[index + 1],
+                data[index + 2]
+            ]);
+            row.push([wind_direction, wind_speed])
+            let randomStep = Math.round(Math.random() * 20) + 15;
+            if(x % randomStep === 0 && y % randomStep === 0 && x < imgData.width && y < imgData.height){
+              particles.push({
+                age: Math.floor(Math.random() * MAX_PARTICLE_AGE),
+                x: x,
+                y: y,
+                xt: x,
+                yt: y,
+                startX: x,
+                startY: y
+              })
+            }
+        }
+        grid.push(row)
+    }
+    // interpolateGrid(grid)
+    return {particles, grid};
+  }
+  var getWindDataFromPixel = function(pixel) {
+      const [r, g, b] = pixel;
 
-  var rows = [];
-  var particles = [];
+      let wind_speed = b * 40 / 255
+      let wind_direction = g / 255 * Math.PI
+      if (r < 65) {
+        wind_direction *= -1
+      }
+      return {wind_speed, wind_direction}
+  }
+  function interpolateGrid(grid) {
   
-  var drawCanvasTiles = function() {
+    for (var y = 0; y < grid.length - 8; y++) {
+  
+      for (var x = 0; x < grid[y].length - 8; x++) {
+        var q00 = grid[y][x];
+        var q01 = grid[y][x + 8];
+        var q10 = grid[y + 8][x];
+        var q11 = grid[y + 8][x + 8];
+  
+        grid[y][x] = bilinearInterpolation(x + 0.5, y + 0.5, x, y, x + 1, y + 1, q00, q01, q10, q11);
+      }
+    }
+  }
+  
+  function bilinearInterpolation(x, y, x0, y0, x1, y1, q00, q01, q10, q11) {
+    var fx1 = x - x0;
+    var fy1 = y - y0;
+    var fx0 = x1 - x;
+    var fy0 = y1 - y;
 
-    var size = params.map.getSize();
+    var q0 = (fx0 * q00[0] + fx1 * q01[0]) / (x1 - x0);
+    var q1 = (fx0 * q10[0] + fx1 * q11[0]) / (x1 - x0);
+  
+    return [(fy0 * q0 + fy1 * q1) / (y1 - y0), q00[1]];
+  }
+  var drawCanvasTiles = function() {
 
     var bounds = params.map.getBounds();
 
@@ -298,29 +376,28 @@ var MyWindy = function MyWindy(params) {
     if(zoom < 2) MAX_ZOOM = 0
     else if (zoom < 4) MAX_ZOOM = 1
     else if(zoom < 8) MAX_ZOOM = 2
-    else MAX_ZOOM = 2
+    else MAX_ZOOM = 3
 
     const tileSize = 256;
-    const zoomFactor = 2**(zoom - MAX_ZOOM)
-    const scaledTileSize = zoomFactor * tileSize
+    const zoomFactor = 2**(zoom - MAX_ZOOM);
+    const scaledTileSize = zoomFactor * tileSize;
 
-    let startTileX = Math.floor(topLeft.x / tileSize);
-    let startTileY = Math.floor(topLeft.y / tileSize);
+    // Calculate tile grid boundaries
+    // Sometimes the first tiles can be outside the map
+    let startTileY = Math.round(Math.floor(topLeft.y / tileSize) / zoomFactor) * zoomFactor - zoomFactor;
+    let startTileX = Math.round(Math.floor(topLeft.x / tileSize) / zoomFactor) * zoomFactor - zoomFactor;
     let endTileX = Math.ceil(bottomRight.x / tileSize);
     let endTileY = Math.ceil(bottomRight.y / tileSize);
-    let leftOffset = 0;
-    let topOffset = 0;
-    startTileY = Math.round(startTileY / zoomFactor) * zoomFactor - zoomFactor;
-    startTileX = Math.round(startTileX / zoomFactor) * zoomFactor - zoomFactor ;
     
-    leftOffset += topLeft.x - (startTileX * tileSize);
-    topOffset += topLeft.y - (startTileY * tileSize);
+    // Tiles offset
+    let leftOffset = topLeft.x - (startTileX * tileSize);
+    let topOffset = topLeft.y - (startTileY * tileSize);
+
     const tempCanvas = document.createElement('canvas')
     tempCanvas.width = params.canvas.width;
     tempCanvas.height = params.canvas.height;
     const tempCtx = tempCanvas.getContext('2d')
-    tempCtx.clearRect(0, 0, 3000, 3000)
-    tempCtx.globalAlpha = 0.85
+
     let countX = 0;
     let countY = 0;
 
@@ -329,7 +406,7 @@ var MyWindy = function MyWindy(params) {
     for (var tileX = startTileX; tileX <= endTileX; tileX++) {
         for (var tileY = startTileY; tileY <= endTileY; tileY++) {
             const range = 2 ** zoom
-            
+            // Complex manipulations with tile coordinates...
             const coord = {
                 x: (tileX % range + range) % range,
                 y: ((Math.pow(2, zoom) - 1) - tileY),
@@ -361,12 +438,12 @@ var MyWindy = function MyWindy(params) {
         }
         else countX++;
     }
-
+    
     function draw(coord, countX, countY, size, offsetLeft, offsetTop) {
       return new Promise((resolve, reject) => {
         if (coord.x >= 0 && coord.y >= 0) {
           const img = new Image();
-          img.src = `../tiles/wind_test/${coord.z}/${coord.x}/${coord.y}.png`;
+          img.src = url.replace('{x}', coord.x).replace('{y}', coord.y).replace('{z}', coord.z);
           img.onload = () => {
             const tileX = countX * size - offsetLeft;
             const tileY = countY * size - offsetTop;
@@ -385,30 +462,28 @@ var MyWindy = function MyWindy(params) {
   }
   var start = function start() {
     stop()
-    const {promises, tempCanvas} = drawCanvasTiles()
+    const {promises, tempCanvas} = drawCanvasTiles() // draw tiles on canvas
     
+    // Waiting for the canvas to be completely drawn
     Promise.all(promises)
     .finally(() => {
       stop()
-      const data = getWindDataFromCanvas(tempCanvas)
-      particles = data.particles;
-      rows = data.rows;
-      animate(rows, particles, tempCanvas)
+      const { particles, grid } = getWindDataFromCanvas(tempCanvas) // build data grid and particles coords
+      animate(grid, particles)
     });
     
   };
-  var animate = function animate(rows, particles, tempCanvas) {
+  var animate = function animate(grid, particles) {
     function direction_speed(x, y) {
       let x1 = Math.round(x)
       let y1 = Math.round(y)
 
-      if(x1 > rows[0].length - 1 || x1 < 0 || y1 > rows.length - 1 || y1 < 0){
+      if(x1 > grid[0].length - 1 || x1 < 0 || y1 > grid.length - 1 || y1 < 0){
         return null
       }
-      return rows[y1][x1]
+      return grid[y1][x1]
     }
     var randomize = function (o) {
-      // UNDONE: this method is terrible
       var x, y;
       var safetyNet = 0;
 
@@ -430,16 +505,19 @@ var MyWindy = function MyWindy(params) {
         var x = particle.x;
         var y = particle.y;
 
-        x = x < 0 ? 0 : x;
-        y = y < 0 ? 0 : y;
-
         var v = direction_speed(x, y); // [wind_direction, wind_speed]
         if (v === null) return;
 
         const [wd, ws] = v;
         let xt = x + ws * Math.cos(wd) * PARTICLE_MULTIPLIER;
         let yt = y + ws * Math.sin(-wd) * PARTICLE_MULTIPLIER;
-        if (direction_speed(xt, yt) !== null) {
+        const newV = direction_speed(xt, yt)
+        if (newV !== null) {
+          if(Math.abs(newV[0] - wd) >= 2){
+            if (Math.abs(newV[0] - Math.PI) <= 2.5){
+              particle.age = MAX_PARTICLE_AGE
+            }
+          }
           particle.xt = xt; 
           particle.yt = yt;
         }
@@ -454,21 +532,25 @@ var MyWindy = function MyWindy(params) {
     const mainCtx = params.canvas.getContext('2d');
     mainCtx.fillStyle = fadeFillStyle;
     mainCtx.lineWidth = PARTICLE_LINE_WIDTH;
-    mainCtx.strokeStyle = 'rgb(222,222,222)';
+    mainCtx.strokeStyle = 'rgb(245,245,245)';
 
     function draw() {
-      var prev = "lighter";
+      // Clear canvas with destination-in
       mainCtx.globalCompositeOperation = "destination-in";
       mainCtx.fillRect(0, 0, params.canvas.width, params.canvas.height);
-      mainCtx.globalCompositeOperation = prev;
-      mainCtx.globalAlpha = OPACITY === 0 ? 0 : OPACITY*0.9; // Draw new particle trails.
+
+      mainCtx.globalCompositeOperation = "lighter";
+      mainCtx.globalAlpha = OPACITY*0.85;
       
       mainCtx.beginPath();
       particles.forEach((particle) => {
+        if(particle.age < MAX_PARTICLE_AGE) {
           mainCtx.moveTo(particle.x, particle.y);
           mainCtx.lineTo(particle.xt, particle.yt);
           particle.x = particle.xt;
           particle.y = particle.yt;
+        }
+          
       });
       mainCtx.stroke();
     }
@@ -483,72 +565,21 @@ var MyWindy = function MyWindy(params) {
       if (delta > FRAME_TIME) {
         then = now - delta % FRAME_TIME;
         evolve();
-        draw();
-        // mainCtx.globalAlpha = 0.5
-        // mainCtx.drawImage(tempCanvas,0,0)
-        
+        draw();        
       }
     })();
   };
   var stop = function stop() {
-    particles = []
-    rows = []
     params.canvas.getContext('2d').clearRect(0,0,3000,3000)
     cancelAnimationFrame(animationLoop);
   };
-  var getWindDataFromCanvas = function (canvas) {
-    const ctx = canvas.getContext('2d');
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-    return decodeColorToParticles(imageData)
-  }
-  var decodeColorToParticles = function(imgData) {
-    const particles = []
-    const data = imgData.data;
-    const width = imgData.width;
-    const rows = []
-    for (let y = 0; y < imgData.height; y++) {
-        const row = []
-        for (let x = 0; x < width; x++) {
-            const index = (y * width + x) * 4;
-            const { wind_speed, wind_direction } = getWindDataFromPixel([
-                data[index],
-                data[index + 1],
-                data[index + 2]
-            ]);
-            row.push([wind_direction, wind_speed])
-            let randomStep = Math.round(Math.random() * 8) + 11;
-            if(x % randomStep === 0 && y % randomStep === 0 && x < imgData.width && y < imgData.height){
-              particles.push({
-                age: Math.floor(Math.random() * MAX_PARTICLE_AGE),
-                x: x,
-                y: y,
-                xt: x,
-                yt: y,
-                startX: x,
-                startY: y
-              })
-            }
-        }
-        rows.push(row)
-    }
-
-    return {particles, rows};
-  }
-  var getWindDataFromPixel = function(pixel) {
-      const [r, g, b] = pixel;
-
-      let wind_speed = b * 50 / 255
-      let wind_direction = g / 255 * Math.PI
-      if (r < 65) {
-        wind_direction *= -1
-      }
-
-      return {wind_speed, wind_direction}
-  }
+  
   var windy = {
     params: params,
     start: start,
     stop: stop,
+    setUrl: setUrl,
+    url: url
   };
 
   return windy;
