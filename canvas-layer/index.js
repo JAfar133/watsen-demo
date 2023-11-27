@@ -94,23 +94,22 @@ L.TileLayer.Canvas = L.TileLayer.extend({
     },
     drawTile(imageCanvas, coords, tile, done) {
         const tileCtx = tile.getContext('2d')
-        const tileZoom = this._getZoomForUrl();
+        const zoom = this._getZoomForUrl();
 
-        if(tileZoom <= MAX_ZOOM) {
+        if(zoom <= MAX_ZOOM) {
             tileCtx.drawImage(imageCanvas, 0, 0);
         }
         else {
             const {x, y, z} = coords;
             const scaledCoords = {
-                x: x >> (tileZoom - MAX_ZOOM),
-                y: y >> (tileZoom - MAX_ZOOM),
+                x: x >> (zoom - MAX_ZOOM),
+                y: y >> (zoom - MAX_ZOOM),
                 z: MAX_ZOOM,
             };
-            tileCtx.imageSmoothingEnabled = true;
-            const imageWidth = tile.width / 2 ** (tileZoom - scaledCoords.z);
-            const imageHeight = tile.height / 2 ** (tileZoom - scaledCoords.z);
-            const imageX = (coords.x - scaledCoords.x * 2 ** (tileZoom - scaledCoords.z)) * imageWidth
-            const imageY = (coords.y - scaledCoords.y * 2 ** (tileZoom - scaledCoords.z)) * imageHeight
+            const imageWidth = tile.width / 2 ** (zoom - scaledCoords.z);
+            const imageHeight = tile.height / 2 ** (zoom - scaledCoords.z);
+            const imageX = (coords.x - scaledCoords.x * 2 ** (zoom - scaledCoords.z)) * imageWidth
+            const imageY = (coords.y - scaledCoords.y * 2 ** (zoom - scaledCoords.z)) * imageHeight
             tileCtx.drawImage(
                 imageCanvas,
                 imageX,
@@ -127,10 +126,10 @@ L.TileLayer.Canvas = L.TileLayer.extend({
             done(null, tile);
             return;
         }
-        tileCtx.imageSmoothingEnabled = false;
-        const imgData = tileCtx.getImageData(0,0,tile.width,tile.height)
-        this.fillTile(imgData)
-        tileCtx.putImageData(imgData, 0, 0)
+        // tileCtx.imageSmoothingEnabled = false;
+        // const imgData = tileCtx.getImageData(0,0,tile.width,tile.height)
+        // this.fillTile(imgData)
+        // tileCtx.putImageData(imgData, 0, 0)
         
         tile.complete = true;
         done(null, tile);

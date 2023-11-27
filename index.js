@@ -124,17 +124,16 @@ function createLayers(step, defaultLayer, isAddWind, data_source) {
         
     }, 0)
     
-
-        
 }
-
-const startStep = '18h';
-const startLayer = 'Ветер';
-let data_source = 'gfs'
-let currentStep = Number(startStep.replace(/\D/g, ''));
 let start_day = 27;
 let start_hour = 0;
 let start_month = 'Ноя';
+
+const startStep = '36h';
+const startLayer = 'Ветер';
+let data_source = 'gfs'
+let currentStep = Number(startStep.replace(/\D/g, ''));
+
 createLayers(startStep, startLayer, false, data_source);
 step_control_fill(start_day, start_hour, start_month)
 map.fitBounds([[-85.05112877980659, 180.0], [85.0511287798066, -180.0]]);
