@@ -12,12 +12,11 @@ body, table, tr, td, th, div, h1, h2, input {
 }
 canvas {
     /* image-rendering: optimizeSpeed; */
-    image-rendering: -moz-crisp-edges;
-    image-rendering: -o-crisp-edges;
-    image-rendering: -webkit-optimize-contrast;
-    image-rendering: optimize-contrast;
-    -ms-interpolation-mode: nearest-neighbor;
-    image-rendering: pixelated;
+    image-rendering: optimizeSpeed; /* Возможно использование более быстрого метода интерполяции (нестандартное свойство) */
+    image-rendering: -moz-crisp-edges; /* Использование билинейной интерполяции в Firefox */
+    image-rendering: -webkit-optimize-contrast; /* Использование билинейной интерполяции в WebKit (Chrome, Safari) */
+    image-rendering: pixelated; /* Использование метода "pixelated", если поддерживается (нестандартное свойство) */
+
 }
 #map {
     position: absolute;
