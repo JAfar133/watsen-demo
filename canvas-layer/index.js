@@ -113,8 +113,8 @@ L.TileLayer.Canvas = L.TileLayer.extend({
             const imageY = (coords.y - scaledCoords.y * 2 ** (zoom - scaledCoords.z)) * imageHeight
             tileCtx.drawImage(
                 imageCanvas,
-                imageX-1,
-                imageY-1,
+                imageX,
+                imageY,
                 imageWidth,
                 imageHeight,
                 0,
