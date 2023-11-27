@@ -3,7 +3,9 @@ body {
     padding: 0;
     -webkit-font-smoothing: antialiased;
 }
-
+.leaflet-tile {
+    image-rendering: -webkit-optimize-contrast
+}
 body, table, tr, td, th, div, h1, h2, input {
     font-family: "Calibri", "Trebuchet MS", "Ubuntu", Serif;
     font-size: 11pt;

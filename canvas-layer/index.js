@@ -8,7 +8,7 @@ L.TileLayer.Canvas = L.TileLayer.extend({
     createCanvas: function (tile, coords, done) {
         let err;
         const {doubleSize} = this.options;
-
+        
         const {x: width, y: height} = this.getTileSize();
         tile.width = doubleSize ? width * 2 : width;
         tile.height = doubleSize ? height * 2 : height;
@@ -20,6 +20,8 @@ L.TileLayer.Canvas = L.TileLayer.extend({
         else if(tileZoom < 8) MAX_ZOOM = 2
         else MAX_ZOOM = 2
         img.onload = () => {
+            tile.width = img.width;
+            tile.height = img.height;
             const imageCanvas = this.createImageTile(img)
             this.drawTile(imageCanvas, coords, tile, done)
         };
@@ -30,6 +32,7 @@ L.TileLayer.Canvas = L.TileLayer.extend({
         }
         img.src = isNaN(tileZoom) ? '' : src;
         img.crossOrigin = "anonymous";
+        img.role = "presentation"
         
     },
     getTileUrl: function (coords) {
@@ -67,9 +70,6 @@ L.TileLayer.Canvas = L.TileLayer.extend({
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
 
-        // ctx.imageSmoothingEnabled = true;
-        // ctx.imageSmoothingQuality = "high";
-
         canvas.width = img.width;
         canvas.height = img.height;
         ctx.drawImage(img, 0, 0)
@@ -106,6 +106,7 @@ L.TileLayer.Canvas = L.TileLayer.extend({
                 y: y >> (tileZoom - MAX_ZOOM),
                 z: MAX_ZOOM,
             };
+            tileCtx.imageSmoothingEnabled = true;
             const imageWidth = tile.width / 2 ** (tileZoom - scaledCoords.z);
             const imageHeight = tile.height / 2 ** (tileZoom - scaledCoords.z);
             const imageX = (coords.x - scaledCoords.x * 2 ** (tileZoom - scaledCoords.z)) * imageWidth
@@ -126,6 +127,7 @@ L.TileLayer.Canvas = L.TileLayer.extend({
             done(null, tile);
             return;
         }
+        tileCtx.imageSmoothingEnabled = false;
         const imgData = tileCtx.getImageData(0,0,tile.width,tile.height)
         this.fillTile(imgData)
         tileCtx.putImageData(imgData, 0, 0)
