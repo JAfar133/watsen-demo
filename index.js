@@ -54,7 +54,7 @@ function createBaseLayers(step, data_source) {
         "Накопление осадков": createLayer(`../tiles/${data_source}/${step}/tp/{z}/{x}/{y}.png`, 'Накопление осадков', 'precipitation', step),
         "Температура": createLayer(`../tiles/${data_source}/${step}/st/{z}/{x}/{y}.png`, 'Температура', 'temperature', step),
         "Давление": createLayer(`../tiles/${data_source}/${step}/sp/{z}/{x}/{y}.png`, 'Давление', 'pressure', step, 20),
-        "Влажность 1000 гПа": createLayer(`../tiles/${data_source}/${step}/r/{z}/{x}/{y}.png`, 'Влажность 1000 гПа', 'humidity', step),
+        "Влажность 1000 гПа": createLayer(`../tiles/${data_source}/${step}/r/{z}/{x}/{y}.png`, 'Влажность', 'humidity', step),
         "OSM": osm
     };
 }
