@@ -17,8 +17,8 @@ L.TileLayer.Canvas = L.TileLayer.extend({
         const tileZoom = this._getZoomForUrl();
         if(tileZoom < 2) MAX_ZOOM = 0
         else if (tileZoom < 4) MAX_ZOOM = 1
-        else if(tileZoom < 8) MAX_ZOOM = 2
-        else MAX_ZOOM = 2
+        else if(tileZoom < 8) MAX_ZOOM = 1
+        else MAX_ZOOM = 1
         img.onload = () => {
             tile.width = img.width;
             tile.height = img.height;
@@ -106,7 +106,7 @@ L.TileLayer.Canvas = L.TileLayer.extend({
                 y: y >> (zoom - MAX_ZOOM),
                 z: MAX_ZOOM,
             };
-            tileCtx.imageSmoothingEnabled = false;
+            // tileCtx.imageSmoothingEnabled = false;
             const imageWidth = tile.width / 2 ** (zoom - scaledCoords.z);
             const imageHeight = tile.height / 2 ** (zoom - scaledCoords.z);
             const imageX = (coords.x - scaledCoords.x * 2 ** (zoom - scaledCoords.z)) * imageWidth
