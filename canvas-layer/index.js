@@ -95,11 +95,12 @@ L.TileLayer.Canvas = L.TileLayer.extend({
     },
     drawTile(imageCanvas, coords, tile, done) {
             const canvas = document.createElement('canvas')
-            const tileCtx = this.getWebGLContext(canvas);
-            // const tileCtx = tile.getContext('2d');
+            canvas.width = tile.width;
+            canvas.height = tile.height;
+            const ctx = this.getWebGLContext(canvas);
             const zoom = this._getZoomForUrl();
             if(zoom <= MAX_ZOOM) {
-                tileCtx.drawImage(imageCanvas, 0, 0);
+                ctx.drawImage(imageCanvas, 0, 0);
             }
             else {
                 const {x, y, z} = coords;
@@ -112,7 +113,7 @@ L.TileLayer.Canvas = L.TileLayer.extend({
                 const imageHeight = tile.height / 2 ** (zoom - scaledCoords.z);
                 const imageX = (coords.x - scaledCoords.x * 2 ** (zoom - scaledCoords.z)) * imageWidth
                 const imageY = (coords.y - scaledCoords.y * 2 ** (zoom - scaledCoords.z)) * imageHeight
-                tileCtx.drawImage(
+                ctx.drawImage(
                     imageCanvas,
                     imageX,
                     imageY,
@@ -128,15 +129,36 @@ L.TileLayer.Canvas = L.TileLayer.extend({
                 done(null, tile);
                 return;
             }
-            const imgData = tileCtx.getImageData(0, 0, tile.width,tile.height)
+            const imgData = ctx.getImageData(0, 0, tile.width,tile.height)
+            // Получаем данные из ImageData
+            const originalData = imgData.data;
+
+            // Создаем новый массив для перевернутых данных
+            const reversedData = new Uint8ClampedArray(originalData.length);
+
+            // Переворачиваем данные
+            for (let y = 0; y < imgData.height; y++) {
+                const rowIndex = imgData.height - y - 1;
             
-            this.fillTile(imgData)
-            const uint8ClampedArray = new Uint8ClampedArray(imgData.data);
-            console.log(imgData);
-            const newImgData = new ImageData(uint8ClampedArray, tile.width, tile.height);
-            console.log(newImgData);
-            const ctx = tile.getContext('2d')
-            ctx.putImageData(newImgData, 0, 0)
+                for (let x = 0; x < imgData.width; x++) {
+                    const originalIndex = (y * imgData.width + x) * 4;
+                    const reversedIndex = (rowIndex * imgData.width + x) * 4;
+            
+                    // Копируем данные из оригинала в новый порядок строк
+                    reversedData[reversedIndex] = originalData[originalIndex];
+                    reversedData[reversedIndex + 1] = originalData[originalIndex + 1];
+                    reversedData[reversedIndex + 2] = originalData[originalIndex + 2];
+                    reversedData[reversedIndex + 3] = originalData[originalIndex + 3];
+                }
+            }
+
+            // Создаем новый ImageData с перевернутыми данными
+            const reversedImgData = new ImageData(reversedData, imgData.width, imgData.height);
+
+            this.fillTile(reversedImgData)
+
+            const tileCtx = tile.getContext('2d')
+            tileCtx.putImageData(reversedImgData, 0, 0)
             
             tile.complete = true;
             done(null, tile);
