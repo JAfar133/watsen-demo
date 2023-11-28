@@ -1,5 +1,6 @@
 let MAX_ZOOM = 3;
-
+let count = 0;
+glContexts = []
 const canvasTiles = new Map()
 L.TileLayer.Canvas = L.TileLayer.extend({
     
@@ -26,10 +27,10 @@ L.TileLayer.Canvas = L.TileLayer.extend({
             this.drawTile(imageCanvas, coords, tile, done)
         };
         const src = this.getTileUrl(coords, tileZoom, tile);
-        if(canvasTiles.has(src)) {
-            this.drawTile(canvasTiles.get(src), coords, tile, done)
-            return;
-        }
+        // if(canvasTiles.has(src)) {
+        //     this.drawTile(canvasTiles.get(src), coords, tile, done)
+        //     return;
+        // }
         img.src = isNaN(tileZoom) ? '' : src;
         img.crossOrigin = "anonymous";
         img.role = "presentation"
@@ -93,9 +94,10 @@ L.TileLayer.Canvas = L.TileLayer.extend({
         }
     },
     drawTile(imageCanvas, coords, tile, done) {
-        const tileCtx = tile.getContext('2d')
+        if(glContexts.length < 15) {
+        const canvas = document.createElement('canvas')
+        const tileCtx = this.getWebGLContext(tile);
         const zoom = this._getZoomForUrl();
-
         if(zoom <= MAX_ZOOM) {
             tileCtx.drawImage(imageCanvas, 0, 0);
         }
@@ -106,7 +108,6 @@ L.TileLayer.Canvas = L.TileLayer.extend({
                 y: y >> (zoom - MAX_ZOOM),
                 z: MAX_ZOOM,
             };
-            // tileCtx.imageSmoothingEnabled = false;
             const imageWidth = tile.width / 2 ** (zoom - scaledCoords.z);
             const imageHeight = tile.height / 2 ** (zoom - scaledCoords.z);
             const imageX = (coords.x - scaledCoords.x * 2 ** (zoom - scaledCoords.z)) * imageWidth
@@ -127,13 +128,26 @@ L.TileLayer.Canvas = L.TileLayer.extend({
             done(null, tile);
             return;
         }
-        tileCtx.imageSmoothingEnabled = false;
         const imgData = tileCtx.getImageData(0,0,tile.width,tile.height)
         this.fillTile(imgData)
         tileCtx.putImageData(imgData, 0, 0)
         
+        
         tile.complete = true;
         done(null, tile);
+        
+            
+        }
+    },
+    getWebGLContext: function(tile) {
+        const newContext = {
+            tile: tile,
+            ctx: enableWebGLCanvas(tile),
+        };
+
+        glContexts.push(newContext);
+    
+        return newContext.ctx;
     },
     interpolateColor: function(value, gradient) {
         let lowerIndex = 0;

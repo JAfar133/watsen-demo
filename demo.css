@@ -16,7 +16,6 @@ canvas {
     image-rendering: -moz-crisp-edges; /* Использование билинейной интерполяции в Firefox */
     image-rendering: -webkit-optimize-contrast; /* Использование билинейной интерполяции в WebKit (Chrome, Safari) */
     image-rendering: pixelated; /* Использование метода "pixelated", если поддерживается (нестандартное свойство) */
-
 }
 #map {
     position: absolute;
