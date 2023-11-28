@@ -135,8 +135,7 @@ L.TileLayer.Canvas = L.TileLayer.extend({
         
         tile.complete = true;
         done(null, tile);
-        
-            
+   
         }
     },
     getWebGLContext: function(tile) {
