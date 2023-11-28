@@ -27,10 +27,10 @@ L.TileLayer.Canvas = L.TileLayer.extend({
             this.drawTile(imageCanvas, coords, tile, done)
         };
         const src = this.getTileUrl(coords, tileZoom, tile);
-        // if(canvasTiles.has(src)) {
-        //     this.drawTile(canvasTiles.get(src), coords, tile, done)
-        //     return;
-        // }
+        if(canvasTiles.has(src)) {
+            this.drawTile(canvasTiles.get(src), coords, tile, done)
+            return;
+        }
         img.src = isNaN(tileZoom) ? '' : src;
         img.crossOrigin = "anonymous";
         img.role = "presentation"
@@ -94,9 +94,9 @@ L.TileLayer.Canvas = L.TileLayer.extend({
         }
     },
     drawTile(imageCanvas, coords, tile, done) {
-        if(glContexts.length < 15) {
             const canvas = document.createElement('canvas')
-            const tileCtx = this.getWebGLContext(tile);
+            const tileCtx = this.getWebGLContext(canvas);
+            // const tileCtx = tile.getContext('2d');
             const zoom = this._getZoomForUrl();
             if(zoom <= MAX_ZOOM) {
                 tileCtx.drawImage(imageCanvas, 0, 0);
@@ -128,24 +128,28 @@ L.TileLayer.Canvas = L.TileLayer.extend({
                 done(null, tile);
                 return;
             }
-            const imgData = tileCtx.getImageData(0,0,tile.width,tile.height)
+            const imgData = tileCtx.getImageData(0, 0, tile.width,tile.height)
+            
             this.fillTile(imgData)
-            tileCtx.putImageData(imgData, 0, 0)
+            const uint8ClampedArray = new Uint8ClampedArray(imgData.data);
+            console.log(imgData);
+            const newImgData = new ImageData(uint8ClampedArray, tile.width, tile.height);
+            console.log(newImgData);
+            const ctx = tile.getContext('2d')
+            ctx.putImageData(newImgData, 0, 0)
             
             tile.complete = true;
             done(null, tile);
-        }
     },
     getWebGLContext: function(tile) {
-        const newContext = {
-            tile: tile,
-            ctx: enableWebGLCanvas(tile),
-        };
-
-        glContexts.push(newContext);
-    
-        return newContext.ctx;
-    },
+        if (!this.webGLContext) {
+            this.webGLContext = {
+                tile: tile,
+                ctx: enableWebGLCanvas(tile),
+            };
+        }
+        return this.webGLContext.ctx;
+     },
     interpolateColor: function(value, gradient) {
         let lowerIndex = 0;
         let upperIndex = gradient.length - 1;
