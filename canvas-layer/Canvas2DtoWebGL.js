@@ -586,57 +586,58 @@ function enableWebGLCanvas( canvas, options )
 
 	//it supports all versions of drawImage (3 params, 5 params or 9 params)
 	//it allows to pass a shader, otherwise it uses texture_shader (code is GL.Shader.SCREEN_COLORED_FRAGMENT_SHADER)
-	ctx.drawImage = function( img, sx, sy, sw, sh, dx, dy, dw, dh, shader ) {
+	ctx.drawImage = function( img, x, y, w, h, shader )
+	{
 		if(!img)
 			return;
-	 
+
 		var img_width = img.videoWidth || img.width;
 		var img_height = img.videoHeight || img.height;
-	 
+			
 		if(img_width == 0 || img_height == 0) 
 			return;
-	 
+
 		var tex = getTexture(img);
 		if(!tex)
 			return;
-	 
+
 		if(arguments.length == 9) //img, sx,sy,sw,sh, x,y,w,h
 		{
-			tmp_vec4b.set([sx/img_width, sy/img_height, sw/img_width, sh/img_height]);
-			dx = arguments[5];
-			dy = arguments[6];
-			dw = arguments[7];
-			dh = arguments[8];
+			tmp_vec4b.set([x/img_width,y/img_height,w/img_width,h/img_height]);
+			x = arguments[5];
+			y = arguments[6];
+			w = arguments[7];
+			h = arguments[8];
 			shader = textured_transform_shader;
 		}
 		else
 			tmp_vec4b.set([0,0,1,1]); //reset texture transform
-	 
-		tmp_vec2[0] = dx; tmp_vec2[1] = dy;
-		tmp_vec2b[0] = dw === undefined ? tex.width : dw;
-		tmp_vec2b[1] = dh === undefined ? tex.height : dh;
-	 
+
+		tmp_vec2[0] = x; tmp_vec2[1] = y;
+		tmp_vec2b[0] = w === undefined ? tex.width : w;
+		tmp_vec2b[1] = h === undefined ? tex.height : h;
+
 		tex.bind(0);
 		if(tex !== img) //only apply the imageSmoothingEnabled if we are dealing with images, not textures
 			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, this.imageSmoothingEnabled ? gl.LINEAR : gl.NEAREST );
-	 
+
 		if(!this.tintImages)
 		{
 			tmp_vec4[0] = tmp_vec4[1] = tmp_vec4[2] = 1.0;	tmp_vec4[3] = this._globalAlpha;
 		}
-	 
+
 		uniforms.u_color = this.tintImages ? this._fillcolor : tmp_vec4;
 		uniforms.u_position = tmp_vec2;
 		uniforms.u_size = tmp_vec2b;
 		uniforms.u_transform = this._matrix;
 		uniforms.u_texture_transform = tmp_vec4b;
 		uniforms.u_viewport = viewport;
-	 
+
 		shader = shader || texture_shader;
-	 
+
 		shader.uniforms( uniforms ).draw(quad_mesh);
 		extra_projection[14] -= 0.001;
-	 }
+	}
 
 	ctx.createPattern = function( img )
 	{

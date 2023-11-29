@@ -10,6 +10,7 @@ gradient = {
         {value: 500, data: [250, 157, 190]},
     ],
     wind: [
+        {value: 0, data: [57, 97, 159]},
         {value: 1, data: [57, 97, 159]},
         {value: 3, data: [74, 148, 169]},
         {value: 5, data: [77, 141, 123]},

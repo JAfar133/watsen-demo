@@ -129,7 +129,7 @@ let start_day = 27;
 let start_hour = 0;
 let start_month = 'Ноя';
 
-const startStep = '36h';
+const startStep = '54h';
 const startLayer = 'Ветер';
 let data_source = 'gfs'
 let currentStep = Number(startStep.replace(/\D/g, ''));
@@ -364,7 +364,7 @@ function shouldIncludeColor(index, dataType) {
 }
 
 function setGradientStyles(gradientDiv, linearGradient) {
-    gradientDiv.css('background', `linear-gradient(to right, ${linearGradient.join(', ')})`);
+    gradientDiv.css('background', `linear-gradient(to right, ${linearGradient[0]}, ${linearGradient.join(', ')})`);
     gradientDiv.html('');
 }
 

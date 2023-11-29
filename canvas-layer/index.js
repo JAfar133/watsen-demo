@@ -98,7 +98,6 @@ L.TileLayer.Canvas = L.TileLayer.extend({
         const width = imgData.width;
         const height = imgData.height;
     
-        // Создаем массив для хранения перевернутых данных
         const reversedData = new Uint8ClampedArray(data.length);
     
         for (let y = 0; y < height; y++) {
@@ -121,7 +120,6 @@ L.TileLayer.Canvas = L.TileLayer.extend({
                     data[originalIndex + 2] = color[2];
                 }
 
-                // Заполняем массив для перевернутых данных
                 reversedData[reversedIndex] = data[originalIndex];
                 reversedData[reversedIndex + 1] = data[originalIndex + 1];
                 reversedData[reversedIndex + 2] = data[originalIndex + 2];
@@ -171,7 +169,7 @@ L.TileLayer.Canvas = L.TileLayer.extend({
                 return;
             }
             const imgData = ctx.getImageData(0, 0, tile.width,tile.height)
-            // Переворачиваем и перекрашиваем данные
+            // Почему-то тайл изображение рисуется перевернутое и его надо повернуть обратно
             const reversedImgData = this.fillAndReverseTile(imgData);
 
             const tileCtx = tile.getContext('2d')
