@@ -273,7 +273,7 @@ L.myVelocityLayer = function (options) {
 var MyWindy = function MyWindy(params) {
   var MAX_PARTICLE_AGE = params.particleAge || 90; // max number of frames a particle is drawn before regeneration
 
-  var PARTICLE_LINE_WIDTH = params.lineWidth || 1.5; // line width of a drawn particle
+  var PARTICLE_LINE_WIDTH = params.lineWidth || 2; // line width of a drawn particle
 
   var PARTICLE_MULTIPLIER = params.particleMultiplier || 0.16; 
 
@@ -297,6 +297,12 @@ var MyWindy = function MyWindy(params) {
     const particles = []
     const data = imgData.data;
     const width = imgData.width;
+    const zoom = params.map.getZoom()
+    let diapason = {a: 20, b: 15}
+    if (zoom < 6) {
+      diapason.a = 8
+      diapason.b = 11
+    }
     let grid = []
     for (let y = 0; y < imgData.height; y++) {
         const row = []
@@ -308,7 +314,7 @@ var MyWindy = function MyWindy(params) {
                 data[index + 2]
             ]);
             row.push([wind_direction, wind_speed])
-            let randomStep = Math.round(Math.random() * 20) + 15;
+            let randomStep = Math.round(Math.random() * diapason.a) + diapason.b;
             if(x % randomStep === 0 && y % randomStep === 0 && x < imgData.width && y < imgData.height){
               particles.push({
                 age: Math.floor(Math.random() * MAX_PARTICLE_AGE),
@@ -496,6 +502,7 @@ var MyWindy = function MyWindy(params) {
       o.y = y;
       return o;
     }
+    const wsScale = params.map.getZoom() < 6 ? 0.5 : 0.9
     function evolve() {
       particles.forEach(function (particle) {
         if (particle.age > MAX_PARTICLE_AGE) {
@@ -509,15 +516,15 @@ var MyWindy = function MyWindy(params) {
         if (v === null) return;
 
         const [wd, ws] = v;
-        let xt = x + ws * Math.cos(wd) * PARTICLE_MULTIPLIER;
-        let yt = y + ws * Math.sin(-wd) * PARTICLE_MULTIPLIER;
+        let xt = x + ws*wsScale * Math.cos(wd) * PARTICLE_MULTIPLIER;
+        let yt = y + ws*wsScale * Math.sin(-wd) * PARTICLE_MULTIPLIER;
         const newV = direction_speed(xt, yt)
         if (newV !== null) {
-          if(Math.abs(newV[0] - wd) >= 2){
-            if (Math.abs(newV[0] - Math.PI) <= 2.5){
-              particle.age = MAX_PARTICLE_AGE
-            }
-          }
+          // if(Math.abs(newV[0] - wd) >= 2){
+          //   if (Math.abs(newV[0] - Math.PI) <= 2.5){
+          //     particle.age = MAX_PARTICLE_AGE
+          //   }
+          // }
           particle.xt = xt; 
           particle.yt = yt;
         }
@@ -532,7 +539,7 @@ var MyWindy = function MyWindy(params) {
     const mainCtx = params.canvas.getContext('2d');
     mainCtx.fillStyle = fadeFillStyle;
     mainCtx.lineWidth = PARTICLE_LINE_WIDTH;
-    mainCtx.strokeStyle = 'rgb(245,245,245)';
+    mainCtx.strokeStyle = 'rgb(190,190,190)';
 
     function draw() {
       // Clear canvas with destination-in

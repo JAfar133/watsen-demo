@@ -91,37 +91,17 @@ function createLayers(step, defaultLayer, isAddWind, data_source) {
     });
     
     setTimeout(()=>{
-        // $.getJSON(`./tiles/wind_test/wind-test.json`, function (data) {
-        //     velocityLayer = L.velocityLayer({
-        //         displayValues: true,
-        //         displayOptions: {
-        //             velocityType: "",
-        //             position: "bottomleft",
-        //             emptyString: "No wind data",
-        //             showCardinal: true,
-        //         },
-        //         data: data,
-        //         opacity: 0.8,
-        //         velocityScale: 0.0025,
-        //         colorScale: ['#ffffff', '#F6F6F6', '#EDEDED'],
-        //         particleMultiplier: 1/320
-                
-        //     });
-        //     isAddWind && velocityLayer.addTo(map);
-            windyLayer = L.myVelocityLayer({
-                url: `../tiles/${data_source}/${step}/wind/{z}/{x}/{y}.png`
-            }).addTo(map);
-            const layers = { 
-                "Направление ветра": windyLayer, 
-                // "Velocity анимация": velocityLayer 
-            };
-        
-            layerControl = L.control.layers(baseLayers, layers, { collapsed: false }).addTo(map);
-            const windCheckbox = $(layerControl._overlaysList).find('input[type="checkbox"]');
-            windCheckbox.siblings(`span:contains("${Object.keys(layers)[0]}")`).addClass('active');
-            $('.leaflet-control-layers-base input:checked').siblings('span').text(defaultLayer).addClass('active');
-        // });
-        
+        windyLayer = L.myVelocityLayer({
+            url: `../tiles/${data_source}/${step}/wind/{z}/{x}/{y}.png`
+        }).addTo(map);
+        const layers = { 
+            "Направление ветра": windyLayer, 
+        };
+    
+        layerControl = L.control.layers(baseLayers, layers, { collapsed: false }).addTo(map);
+        const windCheckbox = $(layerControl._overlaysList).find('input[type="checkbox"]');
+        windCheckbox.siblings(`span:contains("${Object.keys(layers)[0]}")`).addClass('active');
+        $('.leaflet-control-layers-base input:checked').siblings('span').text(defaultLayer).addClass('active');
     }, 0)
     
 }
