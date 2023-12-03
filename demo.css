@@ -26,6 +26,9 @@ canvas {
 .leaflet-tile-container img {
     pointer-events: none;
 }
+/* .leaflet-container {
+    filter: contrast(1.15);
+} */
 
 /* full size */
 .ctl {

@@ -3,8 +3,7 @@
 // Base layers
 var windy = L.tileLayer('https://tiles.windy.com/tiles/v10.0/darkmap/{z}/{x}/{y}.png', {
     opacity: 1,
-    zIndex: 1001,
-    name: "OSM"
+    zIndex: 1001
 });
 var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     opacity: 1,

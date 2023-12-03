@@ -1,6 +1,4 @@
 let MAX_ZOOM = 3;
-let count = 0;
-glContexts = []
 const canvasTiles = new Map()
 L.TileLayer.Canvas = L.TileLayer.extend({
     
@@ -134,8 +132,7 @@ L.TileLayer.Canvas = L.TileLayer.extend({
     },
     drawTile(imageCanvas, coords, tile, done) {
             const canvas = document.createElement('canvas')
-            canvas.width = tile.width;
-            canvas.height = tile.height;
+            canvas.width = canvas.height = tile.width;
             const ctx = this.getWebGLContext(canvas);
             const zoom = this._getZoomForUrl();
             if(zoom <= MAX_ZOOM) {
@@ -148,10 +145,11 @@ L.TileLayer.Canvas = L.TileLayer.extend({
                     y: y >> (zoom - MAX_ZOOM),
                     z: MAX_ZOOM,
                 };
-                const imageWidth = tile.width / 2 ** (zoom - scaledCoords.z);
-                const imageHeight = tile.height / 2 ** (zoom - scaledCoords.z);
-                const imageX = (coords.x - scaledCoords.x * 2 ** (zoom - scaledCoords.z)) * imageWidth
-                const imageY = (coords.y - scaledCoords.y * 2 ** (zoom - scaledCoords.z)) * imageHeight
+                const zoomFactor = 2 ** (zoom - scaledCoords.z)
+                const imageWidth = tile.width / zoomFactor;
+                const imageHeight = imageWidth;
+                const imageX = (coords.x - scaledCoords.x * zoomFactor) * imageWidth
+                const imageY = (coords.y - scaledCoords.y * zoomFactor) * imageHeight
                 ctx.drawImage(
                     imageCanvas,
                     imageX,
@@ -180,12 +178,9 @@ L.TileLayer.Canvas = L.TileLayer.extend({
     },
     getWebGLContext: function(tile) {
         if (!this.webGLContext) {
-            this.webGLContext = {
-                tile: tile,
-                ctx: enableWebGLCanvas(tile),
-            };
+            this.webGLContext = enableWebGLCanvas(tile)
         }
-        return this.webGLContext.ctx;
+        return this.webGLContext;
      },
     interpolateColor: function(value, gradient) {
         let lowerIndex = 0;
